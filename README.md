@@ -74,12 +74,13 @@ crece, esto se puede migrar a GitHub Projects.
 
 | 📋 Backlog | 🔨 En progreso | ✅ Hecho |
 |---|---|---|
-| `ansible_roles/` — roles de hardening (dev-sec) para que `apply` funcione de punta a punta | Pruebas de integración end-to-end contra un sistema Linux real | Estructura base del repo, `pyproject.toml`, CI (lint + mypy strict + pytest) |
-| `approval_engine/` — flujo de solicitud/aprobación/expiración de excepciones | Ampliar categorías del `explainer/` (actualmente 7 categorías cubiertas) | `scanner/` — wrapper de OpenSCAP + parser de resultados XCCDF → modelos internos |
-| `rules_engine/` — selección de reglas CIS/STIG según perfil de organización | | `explainer/` — motor de clasificación por palabras clave + traducción a lenguaje simple, con fallback genérico para hallazgos sin categoría |
-| Modo `shadow` funcional (loguear sin bloquear, ver ADR-003) | | CLI (`ztstart scan`, `ztstart explain`) — comandos base operativos |
-| Persistencia de excepciones aprobadas (¿YAML versionable? ¿SQLite?) | | Perfil de configuración de ejemplo `pyme-basico` |
-| Publicación en PyPI | | |
+| `rules_engine/` — conectar hallazgos del scanner con los tags de Ansible correspondientes (para que `ztstart apply` funcione de punta a punta) | Pruebas de integración end-to-end contra un sistema Linux real (fuera del contenedor de desarrollo) | Estructura base del repo, `pyproject.toml`, CI (lint + mypy strict + pytest + ansible-lint) |
+| Modo `shadow` funcional (loguear sin bloquear, ver ADR-003) | Ampliar categorías del `explainer/` (actualmente 7 categorías cubiertas) | `scanner/` — wrapper de OpenSCAP + parser de resultados XCCDF → modelos internos |
+| Ampliar `zt_baseline` más allá de los 4 controles de ejemplo del perfil `pyme-basico` | | `explainer/` — motor de clasificación por palabras clave + traducción a lenguaje simple, con fallback genérico |
+| Publicación en PyPI | | `approval_engine/` — flujo de solicitud/aprobación/rechazo/expiración de excepciones, persistido en YAML |
+| | | `ansible_roles/zt_baseline` — rol que aplica los 4 controles de ejemplo del perfil `pyme-basico`, con idempotencia validada manualmente |
+| | | CLI (`ztstart scan`, `explain`, `exceptions request/approve/reject/list`) — comandos base operativos |
+| | | Perfil de configuración de ejemplo `pyme-basico` |
 
 Detalle de las decisiones detrás de cada módulo en
 [docs/architecture/decisiones.md](docs/architecture/decisiones.md).

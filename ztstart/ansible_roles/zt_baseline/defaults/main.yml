@@ -1,0 +1,32 @@
+---
+# Valores por defecto del rol zt_baseline.
+#
+# Cada variable acá corresponde a un control específico del perfil
+# pyme-basico (ver ztstart/config/perfiles/pyme_basico.yaml). El comentario
+# junto a cada una indica el ID del control CIS que implementa, para que se
+# pueda trazar de vuelta al benchmark original.
+
+# cis_1.1.1.1 — Deshabilitar sistemas de archivos no usados
+zt_baseline_filesystems_a_deshabilitar:
+  - cramfs
+  - freevxfs
+  - jffs2
+  - hfs
+  - hfsplus
+  - squashfs
+  - udf
+  - usb-storage
+
+# cis_3.1.1 — Deshabilitar IP forwarding (este sistema no es un router/gateway)
+zt_baseline_deshabilitar_ip_forwarding: true
+
+# cis_5.2.1 — Permisos del archivo de configuración de SSH
+zt_baseline_sshd_config_ruta: /etc/ssh/sshd_config
+zt_baseline_sshd_config_propietario: root
+zt_baseline_sshd_config_grupo: root
+zt_baseline_sshd_config_permisos: "0600"
+
+# cis_5.4.1 — Política mínima de contraseñas (vía /etc/login.defs)
+zt_baseline_password_max_dias: 365
+zt_baseline_password_min_dias: 1
+zt_baseline_password_min_longitud: 14

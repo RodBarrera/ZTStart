@@ -1,0 +1,25 @@
+---
+# cis_5.2.1 — Permisos correctos en el archivo de configuración de SSH.
+#
+# Un sshd_config legible/escribible por cualquier usuario permite que una
+# cuenta sin privilegios vea o modifique la configuración del demonio SSH.
+# Se restringe a solo lectura/escritura por root.
+
+- name: Verificar que sshd_config exista antes de tocar sus permisos
+  ansible.builtin.stat:
+    path: "{{ zt_baseline_sshd_config_ruta }}"
+  register: zt_baseline_sshd_config_stat
+  tags:
+    - cis_5.2.1
+    - acceso_remoto_ssh
+
+- name: Aplicar permisos restrictivos a sshd_config
+  ansible.builtin.file:
+    path: "{{ zt_baseline_sshd_config_ruta }}"
+    owner: "{{ zt_baseline_sshd_config_propietario }}"
+    group: "{{ zt_baseline_sshd_config_grupo }}"
+    mode: "{{ zt_baseline_sshd_config_permisos }}"
+  when: zt_baseline_sshd_config_stat.stat.exists
+  tags:
+    - cis_5.2.1
+    - acceso_remoto_ssh

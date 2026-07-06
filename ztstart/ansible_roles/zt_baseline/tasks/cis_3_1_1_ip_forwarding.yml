@@ -1,0 +1,19 @@
+---
+# cis_3.1.1 — Deshabilitar IP forwarding.
+#
+# Este sistema no está pensado para enrutar tráfico entre interfaces
+# (no es un router/gateway), así que esta capacidad se deshabilita por
+# defecto. Se persiste vía sysctl.d para que sobreviva a reinicios, y se
+# aplica de inmediato con el módulo sysctl (sin esperar al próximo reinicio).
+
+- name: Deshabilitar IP forwarding (IPv4)
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: "0"
+    sysctl_file: /etc/sysctl.d/60-zt-baseline-disable-ip-forward.conf
+    sysctl_set: true
+    reload: true
+  when: zt_baseline_deshabilitar_ip_forwarding | bool
+  tags:
+    - cis_3.1.1
+    - red_reenvio_trafico

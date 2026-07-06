@@ -1,0 +1,37 @@
+---
+# cis_5.4.1 — Política mínima de contraseñas.
+#
+# Se ajustan los valores en /etc/login.defs, que aplican a cuentas nuevas.
+# Nota importante: esto NO cambia la política de cuentas ya existentes
+# (para eso se necesitaría `chage` por usuario, fuera del alcance de esta
+# tarea) — es una limitación conocida, documentada en el README del rol.
+
+- name: Configurar días máximos antes de expirar la contraseña (PASS_MAX_DAYS)
+  ansible.builtin.lineinfile:
+    path: /etc/login.defs
+    regexp: "^PASS_MAX_DAYS"
+    line: "PASS_MAX_DAYS   {{ zt_baseline_password_max_dias }}"
+    state: present
+  tags:
+    - cis_5.4.1
+    - politica_contrasenas
+
+- name: Configurar días mínimos entre cambios de contraseña (PASS_MIN_DAYS)
+  ansible.builtin.lineinfile:
+    path: /etc/login.defs
+    regexp: "^PASS_MIN_DAYS"
+    line: "PASS_MIN_DAYS   {{ zt_baseline_password_min_dias }}"
+    state: present
+  tags:
+    - cis_5.4.1
+    - politica_contrasenas
+
+- name: Configurar longitud mínima de contraseña (PASS_MIN_LEN)
+  ansible.builtin.lineinfile:
+    path: /etc/login.defs
+    regexp: "^PASS_MIN_LEN"
+    line: "PASS_MIN_LEN    {{ zt_baseline_password_min_longitud }}"
+    state: present
+  tags:
+    - cis_5.4.1
+    - politica_contrasenas

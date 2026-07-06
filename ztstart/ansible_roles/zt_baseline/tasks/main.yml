@@ -1,0 +1,20 @@
+---
+# Orquestador del rol zt_baseline.
+#
+# Cada control vive en su propio archivo (uno por ID de control CIS) para
+# que agregar/quitar un control sea un cambio aislado y fácil de revisar.
+# El nombre del archivo usa el ID del control con puntos reemplazados por
+# guiones bajos, ya que algunos sistemas de archivos son quisquillosos con
+# los puntos en nombres de archivo.
+
+- name: Importar control cis_1.1.1.1 (filesystems no usados)
+  ansible.builtin.import_tasks: cis_1_1_1_1_filesystems_no_usados.yml
+
+- name: Importar control cis_3.1.1 (IP forwarding)
+  ansible.builtin.import_tasks: cis_3_1_1_ip_forwarding.yml
+
+- name: Importar control cis_5.2.1 (permisos sshd_config)
+  ansible.builtin.import_tasks: cis_5_2_1_permisos_sshd_config.yml
+
+- name: Importar control cis_5.4.1 (política de contraseñas)
+  ansible.builtin.import_tasks: cis_5_4_1_politica_contrasenas.yml

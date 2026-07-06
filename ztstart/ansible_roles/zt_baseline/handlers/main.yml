@@ -1,0 +1,4 @@
+---
+# Sin handlers por ahora — la tarea de IP forwarding usa el parámetro
+# `reload: true` del módulo ansible.posix.sysctl, que aplica el cambio de
+# inmediato sin necesitar un handler notificado aparte.

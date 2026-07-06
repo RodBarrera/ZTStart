@@ -1,0 +1,29 @@
+---
+# cis_1.1.1.1 — Deshabilitar sistemas de archivos no usados.
+#
+# Estrategia: en vez de tocar la configuración del kernel directamente,
+# usamos un archivo de configuración de modprobe que impide que el módulo
+# se cargue. Es reversible (basta con borrar el archivo) y no requiere
+# reiniciar el sistema para que aplique a intentos de carga futuros.
+
+- name: Asegurar que exista el directorio /etc/modprobe.d
+  ansible.builtin.file:
+    path: /etc/modprobe.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags:
+    - cis_1.1.1.1
+    - servicios_innecesarios
+
+- name: Crear archivo de configuración para deshabilitar sistemas de archivos no usados
+  ansible.builtin.template:
+    src: modprobe-disable-filesystems.conf.j2
+    dest: /etc/modprobe.d/zt-baseline-disable-filesystems.conf
+    owner: root
+    group: root
+    mode: "0644"
+  tags:
+    - cis_1.1.1.1
+    - servicios_innecesarios

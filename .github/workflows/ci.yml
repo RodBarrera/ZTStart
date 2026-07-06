@@ -32,3 +32,24 @@ jobs:
 
       - name: Tests (pytest)
         run: pytest
+
+  ansible-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar ansible y ansible-lint
+        run: pip install ansible ansible-lint
+
+      - name: Lint de los roles Ansible
+        run: ansible-lint ztstart/ansible_roles
+
+      - name: Verificación de sintaxis del playbook
+        run: |
+          cd ztstart/ansible_roles
+          ansible-playbook playbook.yml --syntax-check

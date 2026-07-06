@@ -1,0 +1,5 @@
+{{ ansible_managed | comment }}
+{# Generado por el rol zt_baseline — control cis_1.1.1.1 #}
+{% for filesystem in zt_baseline_filesystems_a_deshabilitar %}
+install {{ filesystem }} /bin/true
+{% endfor %}

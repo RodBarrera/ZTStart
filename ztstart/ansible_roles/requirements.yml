@@ -1,0 +1,7 @@
+---
+# Colecciones de Ansible necesarias para zt_baseline.
+# Instalar con: ansible-galaxy collection install -r requirements.yml
+
+collections:
+  - name: ansible.posix
+    version: ">=1.5.0"

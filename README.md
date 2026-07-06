@@ -47,11 +47,11 @@ pip install -e ".[dev]"
 # Escanea el sistema sin hacer cambios (modo solo lectura)
 ztstart scan
 
+# Cuando algo se bloquea, ZTStart lo explica en lenguaje simple
+ztstart explain --resultados ./ztstart-resultados --perfil <perfil-usado-en-scan>
+
 # Aplica el baseline deny-by-default según el perfil de la organización
 ztstart apply --profile pyme-basico
-
-# Cuando algo se bloquea, ZTStart lo explica y pregunta
-ztstart explain --last
 
 # Revisa el historial de excepciones aprobadas (con expiración)
 ztstart exceptions list
@@ -67,6 +67,23 @@ ztstart exceptions list
 4. **Nos apoyamos en estándares existentes** (CIS, STIG, dev-sec) en vez de
    inventar nuestras propias reglas de qué es "seguro".
 
+## Tablero de avance
+
+Estado actual de cada módulo. Se actualiza a mano por ahora — si el proyecto
+crece, esto se puede migrar a GitHub Projects.
+
+| 📋 Backlog | 🔨 En progreso | ✅ Hecho |
+|---|---|---|
+| `ansible_roles/` — roles de hardening (dev-sec) para que `apply` funcione de punta a punta | Pruebas de integración end-to-end contra un sistema Linux real | Estructura base del repo, `pyproject.toml`, CI (lint + mypy strict + pytest) |
+| `approval_engine/` — flujo de solicitud/aprobación/expiración de excepciones | Ampliar categorías del `explainer/` (actualmente 7 categorías cubiertas) | `scanner/` — wrapper de OpenSCAP + parser de resultados XCCDF → modelos internos |
+| `rules_engine/` — selección de reglas CIS/STIG según perfil de organización | | `explainer/` — motor de clasificación por palabras clave + traducción a lenguaje simple, con fallback genérico para hallazgos sin categoría |
+| Modo `shadow` funcional (loguear sin bloquear, ver ADR-003) | | CLI (`ztstart scan`, `ztstart explain`) — comandos base operativos |
+| Persistencia de excepciones aprobadas (¿YAML versionable? ¿SQLite?) | | Perfil de configuración de ejemplo `pyme-basico` |
+| Publicación en PyPI | | |
+
+Detalle de las decisiones detrás de cada módulo en
+[docs/architecture/decisiones.md](docs/architecture/decisiones.md).
+
 ## Contribuir
 
 Este proyecto recién empieza — toda contribución ayuda, desde código hasta
@@ -76,3 +93,8 @@ Ver `CONTRIBUTING.md` (próximamente) para la guía de contribución.
 ## Licencia
 
 Apache License 2.0 — ver [LICENSE](LICENSE).
+
+---
+
+**Autor:** Jorge Barrera Espinoza — Ingeniero en Ciberseguridad
+

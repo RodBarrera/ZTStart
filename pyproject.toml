@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
 authors = [
-    { name = "ZTStart contributors" }
+    { name = "Jorge Barrera Espinoza" }
 ]
 keywords = ["zero-trust", "hardening", "security", "cis-benchmark", "openscap", "ansible"]
 classifiers = [

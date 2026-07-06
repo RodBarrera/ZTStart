@@ -45,6 +45,36 @@ habría bloqueado" (modo shadow) y "esto se bloqueó y alguien decidió sobre
 ello" (modo enforce) — son flujos de datos distintos, no el mismo log con un
 flag.
 
+## ADR-004: Explainer basado en reglas + keywords, no LLM
+
+**Decisión:** el módulo `ztstart/explainer/` traduce hallazgos a lenguaje
+simple usando un motor de categorías con matching por palabras clave
+(`ztstart/explainer/categorias.py` + `ztstart/explainer/motor.py`), no un LLM.
+
+**Por qué:** un usuario de OSS que instala una herramienta de seguridad no
+debería depender de una API externa (con su costo y su superficie de riesgo)
+para una función central como esta. El enfoque de reglas es 100% auditable —
+cualquiera puede leer `categorias.py` y ver exactamente qué explicación se
+genera para qué patrón, sin sorpresas de un modelo.
+
+**Manejo de hallazgos sin categoría conocida:** en vez de forzar un match
+incorrecto, se usa un mensaje de fallback genérico + la descripción técnica
+original del benchmark como detalle expandible (`es_generica=True` en
+`ExplicacionHallazgo`). Nunca se le oculta información al usuario, pero
+tampoco se inventa una explicación que podría ser incorrecta.
+
+**Riesgo conocido:** palabras clave demasiado genéricas pueden causar falsos
+positivos de categorización (ej. la palabra "disable" originalmente en
+`servicios_innecesarios` hacía match incorrecto con reglas de SSH como
+`sshd_disable_root_login`). Mitigación: los tests en
+`tests/unit/test_explainer.py` cubren casos de clasificación específica por
+categoría, así que un keyword mal elegido que rompa la categorización de otro
+caso real se detecta en CI antes de mergear.
+
+**Pendiente:** un LLM opcional (capa separada, no dependencia core) podría
+ofrecerse más adelante para organizaciones que quieran redactar excepciones
+personalizadas — pero el motor de reglas seguirá siendo la ruta por defecto.
+
 ## Pendiente de decidir
 
 - Formato exacto de persistencia de excepciones aprobadas (¿SQLite local?

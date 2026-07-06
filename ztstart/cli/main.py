@@ -10,9 +10,11 @@ from pathlib import Path
 
 import typer
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
 
 from ztstart import __version__
+from ztstart.explainer.motor import explicar_todos
 from ztstart.scanner.openscap_wrapper import (
     EscaneoFallidoError,
     OpenSCAPNoDisponibleError,
@@ -94,8 +96,8 @@ def scan(
     if resultado.total_fallados > 0:
         consola.print(
             f"\n[yellow]Hay {resultado.total_fallados} reglas falladas.[/yellow] "
-            "Usa 'ztstart explain --last' para ver qué significan en lenguaje simple. "
-            "[dim](comando aún no implementado — próximo paso del roadmap)[/dim]"
+            f"Corre: [bold]ztstart explain --resultados {salida} --perfil {perfil}[/bold] "
+            "para ver qué significan en lenguaje simple."
         )
 
 
@@ -115,15 +117,50 @@ def apply(
 
 @app.command()
 def explain(
-    ultimo: bool = typer.Option(False, "--last", help="Explica el hallazgo/bloqueo más reciente"),
+    resultados: Path = typer.Option(
+        Path("./ztstart-resultados"),
+        "--resultados",
+        help="Directorio de resultados generado por 'ztstart scan' (mismo valor usado en --salida)",
+    ),
+    perfil: str = typer.Option(
+        ...,
+        "--perfil",
+        help="ID del perfil XCCDF usado en el escaneo (debe coincidir con el de 'ztstart scan')",
+    ),
+    host: str = typer.Option("localhost", "--host", help="Identificador del sistema escaneado"),
 ) -> None:
-    """Traduce un hallazgo técnico a lenguaje simple. (Aún no implementado)"""
-    del ultimo  # placeholder hasta implementar explainer/
-    consola.print(
-        "[dim]El comando 'explain' está pendiente de implementación — "
-        "ver ztstart/explainer/ y docs/architecture/roadmap.md[/dim]"
-    )
-    raise typer.Exit(code=0)
+    """Traduce los hallazgos fallados del último escaneo a lenguaje simple."""
+    ruta_xccdf = resultados / "resultados-xccdf.xml"
+    if not ruta_xccdf.exists():
+        consola.print(
+            f"[bold red]No encontré resultados en '{resultados}'.[/bold red] "
+            "Corré 'ztstart scan' primero, o revisa la ruta con --resultados."
+        )
+        raise typer.Exit(code=1)
+
+    resultado = parsear_resultados_xccdf(ruta_xccdf, host=host, perfil_benchmark=perfil)
+
+    if resultado.total_fallados == 0:
+        consola.print("[bold green]No hay hallazgos fallados que explicar.[/bold green]")
+        raise typer.Exit(code=0)
+
+    explicaciones = explicar_todos(resultado.hallazgos_fallados)
+
+    for explicacion in explicaciones:
+        cuerpo = (
+            f"[bold]{explicacion.mensaje_simple}[/bold]\n\n"
+            f"[cyan]Por qué importa:[/cyan] {explicacion.por_que_importa}\n\n"
+            f"[yellow]Si se ignora:[/yellow] {explicacion.que_pasa_si_se_ignora}"
+        )
+        if explicacion.detalle_tecnico:
+            cuerpo += f"\n\n[dim]Detalle técnico: {explicacion.detalle_tecnico}[/dim]"
+
+        titulo = explicacion.regla_id
+        estilo_borde = "yellow" if explicacion.es_generica else "cyan"
+        if explicacion.es_generica:
+            titulo += " [dim](sin categoría específica)[/dim]"
+
+        consola.print(Panel(cuerpo, title=titulo, border_style=estilo_borde))
 
 
 if __name__ == "__main__":

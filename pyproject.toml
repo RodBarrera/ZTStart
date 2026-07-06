@@ -1,0 +1,67 @@
+[project]
+name = "ztstart"
+version = "0.1.0"
+description = "Arranca sistemas en modo zero-trust desde el día uno: escanea, aplica hardening deny-by-default y traduce cada excepción a lenguaje simple para que la organización decida qué habilitar."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "ZTStart contributors" }
+]
+keywords = ["zero-trust", "hardening", "security", "cis-benchmark", "openscap", "ansible"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: System Administrators",
+    "Intended Audience :: Information Technology",
+    "Topic :: Security",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "typer>=0.12.0",
+    "rich>=13.7.0",
+    "pydantic>=2.6.0",
+    "pyyaml>=6.0.1",
+    "lxml>=5.1.0",
+    "jinja2>=3.1.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.3.0",
+    "mypy>=1.9.0",
+    "lxml-stubs>=0.5.1",
+]
+
+[project.scripts]
+ztstart = "ztstart.cli.main:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ztstart"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM"]
+# B008: typer requiere function calls (typer.Option/typer.Argument) como default
+# de argumento — es el patrón documentado y recomendado por typer, no un bug real.
+ignore = ["B008"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=ztstart --cov-report=term-missing"

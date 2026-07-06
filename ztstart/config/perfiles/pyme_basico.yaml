@@ -1,0 +1,38 @@
+# Perfil: pyme-basico
+#
+# Pensado para organizaciones pequeñas sin equipo de seguridad dedicado.
+# Prioriza pocos controles de alto impacto sobre cobertura exhaustiva —
+# la meta es que sea aplicable sin tumbar servicios en producción el día 1.
+
+nombre: "pyme-basico"
+descripcion: >
+  Baseline mínimo viable para servidores de PyMEs. Cubre los controles de
+  mayor impacto/menor fricción operacional del CIS Benchmark nivel 1.
+
+benchmark_base: "cis_level1_server"
+datastream_sugerido: "ssg-debian12-ds.xml"  # ajustar según distro real
+
+modo_inicial: "shadow"  # shadow = solo loguea, no bloquea. Ver docs/architecture/modos.md
+duracion_modo_shadow_dias: 14
+
+controles_incluidos:
+  # Solo un subconjunto curado del benchmark completo — no los ~300 controles CIS.
+  # Cada entrada referencia el ID real del benchmark para trazabilidad.
+  - id: "cis_1.1.1.1"
+    motivo: "Deshabilitar sistemas de archivos no usados reduce superficie de ataque con cero impacto funcional típico"
+  - id: "cis_3.1.1"
+    motivo: "Deshabilitar IP forwarding en servidores que no son routers/gateways"
+  - id: "cis_5.2.1"
+    motivo: "Permisos correctos en sshd_config es de las mitigaciones más costo-efectivas que existen"
+  - id: "cis_5.4.1"
+    motivo: "Políticas de contraseña mínimas — bajo costo de implementación, alto impacto"
+  # ... lista completa en docs/rules/pyme-basico.md (pendiente de completar)
+
+excepciones_pre_aprobadas: []
+  # Reglas de negocio que ya se sabe que van a necesitar excepción en este perfil
+  # (ej. si la organización usa un VPN específica que requiere un puerto abierto).
+  # Se completa por organización, no debería ir vacío en un despliegue real.
+
+notificaciones:
+  requiere_aprobacion_humana: true
+  canal: "cli"  # futuro: slack, email

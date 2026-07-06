@@ -51,7 +51,8 @@ ztstart scan
 ztstart explain --resultados ./ztstart-resultados --perfil <perfil-usado-en-scan>
 
 # Aplica el baseline deny-by-default según el perfil de la organización
-ztstart apply --profile pyme-basico
+# (dry-run por defecto — agrega --confirmar para aplicar de verdad)
+ztstart apply --profile pyme-basico --resultados ./ztstart-resultados --perfil-xccdf <perfil-usado-en-scan>
 
 # Revisa el historial de excepciones aprobadas (con expiración)
 ztstart exceptions list
@@ -74,12 +75,14 @@ crece, esto se puede migrar a GitHub Projects.
 
 | 📋 Backlog | 🔨 En progreso | ✅ Hecho |
 |---|---|---|
-| `rules_engine/` — conectar hallazgos del scanner con los tags de Ansible correspondientes (para que `ztstart apply` funcione de punta a punta) | Pruebas de integración end-to-end contra un sistema Linux real (fuera del contenedor de desarrollo) | Estructura base del repo, `pyproject.toml`, CI (lint + mypy strict + pytest + ansible-lint) |
-| Modo `shadow` funcional (loguear sin bloquear, ver ADR-003) | Ampliar categorías del `explainer/` (actualmente 7 categorías cubiertas) | `scanner/` — wrapper de OpenSCAP + parser de resultados XCCDF → modelos internos |
-| Ampliar `zt_baseline` más allá de los 4 controles de ejemplo del perfil `pyme-basico` | | `explainer/` — motor de clasificación por palabras clave + traducción a lenguaje simple, con fallback genérico |
-| Publicación en PyPI | | `approval_engine/` — flujo de solicitud/aprobación/rechazo/expiración de excepciones, persistido en YAML |
+| Modo `shadow` funcional (loguear sin bloquear, ver ADR-003) | Pruebas de integración end-to-end contra un servidor real (no un contenedor) — el contenedor de desarrollo carece de systemd/muchos servicios que el CIS Benchmark evalúa | Estructura base del repo, `pyproject.toml`, CI (lint + mypy strict + pytest + ansible-lint) |
+| Ampliar `zt_baseline` y el `explainer` más allá de los 4 controles de ejemplo del perfil `pyme-basico` | Ampliar categorías del `explainer/` | `scanner/` — wrapper de OpenSCAP + parser de resultados XCCDF → modelos internos |
+| Publicación en PyPI | | `explainer/` — motor de clasificación por palabras clave + traducción a lenguaje simple, con fallback genérico |
+| | | `approval_engine/` — flujo de solicitud/aprobación/rechazo/expiración de excepciones, persistido en YAML |
 | | | `ansible_roles/zt_baseline` — rol que aplica los 4 controles de ejemplo del perfil `pyme-basico`, con idempotencia validada manualmente |
-| | | CLI (`ztstart scan`, `explain`, `exceptions request/approve/reject/list`) — comandos base operativos |
+| | | `rules_engine/` — conecta hallazgos fallados con tags de Ansible vía las categorías del `explainer`; distingue hallazgos cubiertos de no cubiertos |
+| | | **Ciclo completo `scan → explain → apply` validado de punta a punta** (dry-run por defecto) |
+| | | CLI completo: `scan`, `explain`, `apply`, `exceptions request/approve/reject/list` |
 | | | Perfil de configuración de ejemplo `pyme-basico` |
 
 Detalle de las decisiones detrás de cada módulo en

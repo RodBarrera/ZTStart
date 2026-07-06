@@ -153,6 +153,47 @@ verificación de idempotencia, por ahora, se hace manualmente durante
 desarrollo — automatizarla en CI (ej. con Molecule + Docker) es un buen
 próximo paso, documentado como pendiente abajo.
 
+## ADR-008: rules_engine reutiliza la clasificación del explainer, no un mapeo aparte
+
+**Decisión:** `rules_engine/motor.py` no mantiene una tabla propia de
+"regla_id → tag de Ansible". En vez de eso, reutiliza
+`explainer.motor.clasificar()` — la misma función que ya clasifica un
+hallazgo para explicarlo en lenguaje simple — y usa su `categoria` como el
+tag de Ansible a aplicar. El perfil de configuración (ej. `pyme_basico.yaml`)
+declara qué categorías tiene habilitadas mediante el campo `categoria` en
+cada control incluido.
+
+**Por qué:** mantener dos tablas de mapeo separadas (una para explicar, otra
+para aplicar) es una fuente clásica de bugs de sincronización — se actualiza
+una y se olvida la otra. Como la convención de nombres ya era la misma
+(categoría del explainer = tag de la tarea Ansible, ver ADR-006), unificar
+el mapeo en un solo lugar fue directo.
+
+**Consecuencia importante — cobertura honesta:** `PlanDeAplicacion` separa
+explícitamente `hallazgos_cubiertos` de `hallazgos_no_cubiertos`. Un hallazgo
+no cubierto no es un error silencioso: la CLI (`ztstart apply`) se lo muestra
+al usuario y sugiere ampliar el perfil o pedir una excepción — nunca se
+aplica algo "a ciegas" ni se ignora en silencio lo que el perfil no cubre.
+
+**`apply` es dry-run por defecto.** Igual que el resto del proyecto,
+`ztstart apply` corre `ansible-playbook --check --diff` a menos que se pase
+`--confirmar` explícitamente. Esto es coherente con la filosofía
+deny-by-default del proyecto: ni siquiera aplicar el propio hardening es
+"todo abierto" por defecto.
+
+**Validación end-to-end realizada:** se corrió el pipeline completo
+(`scan` real con OpenSCAP contra este entorno de desarrollo → `explain` →
+`apply --check`) usando un archivo de resultados XCCDF con hallazgos de
+prueba deliberados. Se confirmó que: (1) el motor clasifica correctamente
+hallazgos cubiertos vs. no cubiertos por el perfil, (2) los tags calculados
+son los correctos, y (3) `ansible-playbook --tags` ejecuta solo las tareas
+correspondientes a esos tags, ninguna de más. El escaneo real con OpenSCAP
+en este entorno de desarrollo (un contenedor sin systemd) no produjo
+hallazgos fallados reales — la mayoría de los controles CIS resultaron
+`notapplicable`/`notselected` por tratarse de un contenedor, no un servidor
+completo — por lo que la validación de la ruta con fallos usó un archivo de
+resultados construido a mano con el mismo esquema XCCDF real.
+
 ## Pendiente de decidir
 
 - Formato exacto de persistencia de excepciones aprobadas (¿SQLite local?

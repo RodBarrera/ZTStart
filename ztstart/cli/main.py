@@ -6,6 +6,7 @@ explainer/ y approval_engine/. El CLI no debería crecer con lógica de negocio.
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import typer
@@ -21,6 +22,8 @@ from ztstart.approval_engine.errores import (
 )
 from ztstart.approval_engine.models import EstadoExcepcion
 from ztstart.explainer.motor import explicar_todos
+from ztstart.rules_engine.motor import planificar_aplicacion
+from ztstart.rules_engine.perfiles import PerfilNoEncontradoError, cargar_perfil
 from ztstart.scanner.openscap_wrapper import (
     EscaneoFallidoError,
     OpenSCAPNoDisponibleError,
@@ -113,18 +116,84 @@ def scan(
         )
 
 
+_RUTA_ANSIBLE_ROLES = Path(__file__).resolve().parent.parent / "ansible_roles"
+
+
 @app.command()
 def apply(
-    perfil: str = typer.Option(
-        ..., "--profile", help="Nombre del perfil de configuración a aplicar"
+    perfil_nombre: str = typer.Option(
+        ..., "--profile", help="Nombre del perfil de configuración a aplicar (ej. pyme-basico)"
+    ),
+    resultados: Path = typer.Option(
+        Path("./ztstart-resultados"),
+        "--resultados",
+        help="Directorio de resultados de 'ztstart scan' a usar para decidir qué aplicar",
+    ),
+    perfil_xccdf: str = typer.Option(
+        ..., "--perfil-xccdf", help="ID del perfil XCCDF usado en el escaneo (el de 'ztstart scan')"
+    ),
+    host: str = typer.Option("localhost", "--host", help="Identificador del sistema escaneado"),
+    confirmar: bool = typer.Option(
+        False,
+        "--confirmar",
+        help="Aplica los cambios de verdad. Sin esta bandera, solo muestra qué cambiaría "
+        "(dry-run) — coherente con la filosofía deny-by-default del proyecto.",
     ),
 ) -> None:
-    """Aplica el baseline deny-by-default del perfil indicado. (Aún no implementado)"""
+    """Aplica el baseline del perfil indicado, según lo que encontró el último escaneo."""
+    try:
+        perfil = cargar_perfil(perfil_nombre)
+    except PerfilNoEncontradoError as error:
+        consola.print(f"[bold red]Error:[/bold red] {error}")
+        raise typer.Exit(code=1) from error
+
+    ruta_xccdf = resultados / "resultados-xccdf.xml"
+    if not ruta_xccdf.exists():
+        consola.print(
+            f"[bold red]No encontré resultados en '{resultados}'.[/bold red] "
+            "Corré 'ztstart scan' primero."
+        )
+        raise typer.Exit(code=1)
+
+    resultado = parsear_resultados_xccdf(ruta_xccdf, host=host, perfil_benchmark=perfil_xccdf)
+    plan = planificar_aplicacion(resultado.hallazgos_fallados, perfil)
+
+    consola.print(f"[bold cyan]Plan de aplicación — perfil '{perfil.nombre}'[/bold cyan]")
     consola.print(
-        f"[dim]El comando 'apply' para el perfil '{perfil}' está pendiente de implementación. "
-        "Depende de rules_engine/ y ansible_roles/ — ver docs/architecture/roadmap.md[/dim]"
+        f"Hallazgos cubiertos por este perfil: [green]{len(plan.hallazgos_cubiertos)}[/green] — "
+        f"no cubiertos: [yellow]{len(plan.hallazgos_no_cubiertos)}[/yellow]"
     )
-    raise typer.Exit(code=0)
+
+    if plan.hallazgos_no_cubiertos:
+        consola.print(
+            "[dim]Los hallazgos no cubiertos no tienen una tarea de Ansible en este perfil. "
+            "Considera ampliar el perfil o solicitar una excepción con "
+            "'ztstart exceptions request'.[/dim]"
+        )
+
+    if not plan.hay_algo_que_aplicar:
+        consola.print("[dim]Nada que aplicar con este perfil — no se ejecuta Ansible.[/dim]")
+        raise typer.Exit(code=0)
+
+    tags = ",".join(plan.tags_ansible)
+    consola.print(f"Tags a aplicar: [bold]{tags}[/bold]")
+
+    comando = ["ansible-playbook", "playbook.yml", "--tags", tags]
+    if not confirmar:
+        comando.extend(["--check", "--diff"])
+        consola.print(
+            "[yellow]Modo dry-run (no se aplica nada de verdad).[/yellow] "
+            "Usa --confirmar para aplicar los cambios."
+        )
+
+    try:
+        subprocess.run(comando, cwd=_RUTA_ANSIBLE_ROLES, check=False)  # noqa: S603
+    except FileNotFoundError as error:
+        consola.print(
+            "[bold red]No encontré 'ansible-playbook' instalado.[/bold red] "
+            "Instala Ansible para poder aplicar el baseline."
+        )
+        raise typer.Exit(code=1) from error
 
 
 @app.command()

@@ -17,14 +17,20 @@ duracion_modo_shadow_dias: 14
 
 controles_incluidos:
   # Solo un subconjunto curado del benchmark completo — no los ~300 controles CIS.
-  # Cada entrada referencia el ID real del benchmark para trazabilidad.
+  # `categoria` conecta este control con su categoría en explainer/categorias.py
+  # y con el tag de la tarea Ansible correspondiente en ansible_roles/zt_baseline —
+  # los tres usan el mismo ID por convención (ver docs/architecture/decisiones.md, ADR-006).
   - id: "cis_1.1.1.1"
+    categoria: "servicios_innecesarios"
     motivo: "Deshabilitar sistemas de archivos no usados reduce superficie de ataque con cero impacto funcional típico"
   - id: "cis_3.1.1"
+    categoria: "red_reenvio_trafico"
     motivo: "Deshabilitar IP forwarding en servidores que no son routers/gateways"
   - id: "cis_5.2.1"
+    categoria: "acceso_remoto_ssh"
     motivo: "Permisos correctos en sshd_config es de las mitigaciones más costo-efectivas que existen"
   - id: "cis_5.4.1"
+    categoria: "politica_contrasenas"
     motivo: "Políticas de contraseña mínimas — bajo costo de implementación, alto impacto"
   # ... lista completa en docs/rules/pyme-basico.md (pendiente de completar)
 

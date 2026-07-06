@@ -68,22 +68,32 @@ ztstart exceptions list
 4. **Nos apoyamos en estándares existentes** (CIS, STIG, dev-sec) en vez de
    inventar nuestras propias reglas de qué es "seguro".
 
-## Tablero de avance
+## Estado de componentes
 
-Estado actual de cada módulo. Se actualiza a mano por ahora — si el proyecto
-crece, esto se puede migrar a GitHub Projects.
+Leyenda: ✅ Completo &nbsp;·&nbsp; 🔄 En progreso &nbsp;·&nbsp; ⬜ Pendiente
 
-| 📋 Backlog | 🔨 En progreso | ✅ Hecho |
-|---|---|---|
-| Modo `shadow` funcional (loguear sin bloquear, ver ADR-003) | Pruebas de integración end-to-end contra un servidor real (no un contenedor) — el contenedor de desarrollo carece de systemd/muchos servicios que el CIS Benchmark evalúa | Estructura base del repo, `pyproject.toml`, CI (lint + mypy strict + pytest + ansible-lint) |
-| Ampliar `zt_baseline` y el `explainer` más allá de los 4 controles de ejemplo del perfil `pyme-basico` | Ampliar categorías del `explainer/` | `scanner/` — wrapper de OpenSCAP + parser de resultados XCCDF → modelos internos |
-| Publicación en PyPI | | `explainer/` — motor de clasificación por palabras clave + traducción a lenguaje simple, con fallback genérico |
-| | | `approval_engine/` — flujo de solicitud/aprobación/rechazo/expiración de excepciones, persistido en YAML |
-| | | `ansible_roles/zt_baseline` — rol que aplica los 4 controles de ejemplo del perfil `pyme-basico`, con idempotencia validada manualmente |
-| | | `rules_engine/` — conecta hallazgos fallados con tags de Ansible vía las categorías del `explainer`; distingue hallazgos cubiertos de no cubiertos |
-| | | **Ciclo completo `scan → explain → apply` validado de punta a punta** (dry-run por defecto) |
-| | | CLI completo: `scan`, `explain`, `apply`, `exceptions request/approve/reject/list` |
-| | | Perfil de configuración de ejemplo `pyme-basico` |
+**Núcleo (scan → explain → apply → exceptions)**
+- ✅ `scanner/` — wrapper de OpenSCAP + parser de resultados XCCDF → modelos internos
+- ✅ `explainer/` — clasificación por palabras clave + traducción a lenguaje simple (7 categorías, con fallback genérico honesto)
+- ✅ `approval_engine/` — solicitud, aprobación, rechazo y expiración de excepciones, persistido en YAML
+- ✅ `rules_engine/` — conecta hallazgos fallados con tags de Ansible vía las categorías del `explainer`; distingue hallazgos cubiertos de no cubiertos
+- ✅ `ansible_roles/zt_baseline` — aplica los 4 controles CIS de ejemplo del perfil `pyme-basico`, idempotencia validada manualmente
+- ✅ CLI completo: `scan`, `explain`, `apply`, `exceptions request/approve/reject/list`
+- ✅ **Ciclo completo `scan → explain → apply` validado de punta a punta** (dry-run por defecto)
+
+**Infraestructura del proyecto**
+- ✅ Estructura base del repo, `pyproject.toml`, licencia, `CONTRIBUTING.md`
+- ✅ CI (ruff, mypy strict, pytest, ansible-lint)
+- ✅ Perfil de configuración de ejemplo `pyme-basico`
+
+**En progreso**
+- 🔄 Pruebas de integración end-to-end contra un servidor real (no un contenedor) — el entorno de desarrollo carece de systemd/muchos servicios que el CIS Benchmark evalúa
+- 🔄 Ampliar categorías del `explainer/` más allá de las 7 actuales
+- 🔄 Ampliar `zt_baseline` más allá de los 4 controles de ejemplo
+
+**Pendiente**
+- ⬜ Modo `shadow` funcional (loguear sin bloquear, ver ADR-003)
+- ⬜ Publicación en PyPI
 
 Detalle de las decisiones detrás de cada módulo en
 [docs/architecture/decisiones.md](docs/architecture/decisiones.md).

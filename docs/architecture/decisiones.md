@@ -194,6 +194,61 @@ hallazgos fallados reales — la mayoría de los controles CIS resultaron
 completo — por lo que la validación de la ruta con fallos usó un archivo de
 resultados construido a mano con el mismo esquema XCCDF real.
 
+## ADR-009: Modo shadow — el reloj arranca en el primer `apply`, no en el perfil
+
+**Decisión:** se implementó `rules_engine/shadow.py`. Un perfil con
+`modo_inicial: "shadow"` (ver `Perfil.modo_inicial` en `rules_engine/models.py`)
+nunca ejecuta cambios reales durante su `duracion_modo_shadow_dias`, sin
+importar que `ztstart apply` reciba `--confirmar`. `apply` sigue mostrando el
+plan completo (qué se cubre, qué tags se aplicarían) — la única diferencia es
+que el comando real a `ansible-playbook` siempre lleva `--check --diff`
+mientras el shadow esté vigente.
+
+El estado (`EstadoShadow`: perfil, host, fecha de inicio, duración) se
+persiste en `ztstart-shadow.yaml` — un archivo plano nuevo y separado de
+`ztstart-excepciones.yaml`, siguiendo el mismo patrón de
+`approval_engine/repositorio.py` (ADR-005): sin lógica de negocio en la
+capa de persistencia, versionable en git.
+
+**Por qué el reloj arranca en el primer `apply` y no en la fecha del archivo
+de perfil:** un perfil YAML puede vivir en el repo de configuración meses
+antes de aplicarse por primera vez a un sistema real (o aplicarse primero en
+un servidor de staging y semanas después en producción). Si el período de
+shadow se contara desde que se escribió el archivo, un perfil "shadow" podría
+llegar a un servidor productivo ya vencido el primer día, sin que nadie lo
+haya visto en modo prueba de verdad — exactamente la sorpresa que este
+proyecto existe para evitar. Por eso `evaluar_modo_shadow()` crea el
+`EstadoShadow` la primera vez que se evalúa para un `(perfil, host)` dado, y
+llamadas posteriores nunca reinician esa fecha de inicio.
+
+**Por qué es por `(perfil, host)` y no solo por perfil:** el mismo perfil
+puede aplicarse primero en un servidor y semanas después en otro. Cada host
+necesita su propia ventana de observación antes de bloquear cambios reales
+en él — el shadow de un servidor no debería darse por "cumplido" porque otro
+servidor ya llevaba dos semanas en shadow.
+
+**Consecuencia en la CLI:** `ztstart apply` muestra un panel explícito
+("Modo shadow activo") con cuántos días quedan, y si se pasó `--confirmar`
+mientras el shadow sigue vigente, lo dice explícitamente en vez de
+aplicarlo en silencio como si nada. Se agregó además `ztstart shadow-status
+--profile <perfil> --host <host>` para consultar el estado sin tener que
+correr `apply`.
+
+**Validación real hecha:** se corrió el CLI completo (no solo el motor
+aislado) con un resultado XCCDF de prueba construido a mano, reemplazando
+solo la llamada real a `ansible-playbook` por un stub — se confirmó que (1)
+con shadow vigente, `apply --confirmar` sigue ejecutando el comando con
+`--check --diff` y avisa que `--confirmar` fue ignorado, y (2) forzando un
+`EstadoShadow` ya vencido, `apply --confirmar` ejecuta el comando real, sin
+`--check`/`--diff`.
+
+**Pendiente relacionado:** no hay todavía un comando para "saltar" el shadow
+manualmente (ej. si una organización quiere aplicar antes de que termine el
+período) ni uno para extenderlo — por ahora solo se puede editar
+`ztstart-shadow.yaml` a mano, lo cual es intencional en este momento (menos
+superficie, y el archivo ya es auditable por git) pero puede necesitar un
+comando explícito más adelante.
+
 ## Pendiente de decidir
 
 - Formato exacto de persistencia de excepciones aprobadas (¿SQLite local?

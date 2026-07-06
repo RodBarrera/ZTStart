@@ -24,6 +24,7 @@ from ztstart.approval_engine.models import EstadoExcepcion
 from ztstart.explainer.motor import explicar_todos
 from ztstart.rules_engine.motor import planificar_aplicacion
 from ztstart.rules_engine.perfiles import PerfilNoEncontradoError, cargar_perfil
+from ztstart.rules_engine.shadow import RepositorioEstadoShadow, evaluar_modo_shadow
 from ztstart.scanner.openscap_wrapper import (
     EscaneoFallidoError,
     OpenSCAPNoDisponibleError,
@@ -178,12 +179,41 @@ def apply(
     tags = ",".join(plan.tags_ansible)
     consola.print(f"Tags a aplicar: [bold]{tags}[/bold]")
 
+    estado_shadow = evaluar_modo_shadow(perfil, host, RepositorioEstadoShadow())
+    en_shadow = estado_shadow is not None and estado_shadow.vigente
+
     comando = ["ansible-playbook", "playbook.yml", "--tags", tags]
-    if not confirmar:
+
+    if en_shadow:
+        assert estado_shadow is not None  # para mypy: en_shadow ya lo garantiza
+        comando.extend(["--check", "--diff"])
+        consola.print(
+            Panel(
+                f"Este perfil está en período de prueba (modo shadow) desde "
+                f"{estado_shadow.fecha_inicio:%Y-%m-%d}. Quedan "
+                f"[bold]{estado_shadow.dias_restantes}[/bold] día(s) antes de que "
+                "los cambios se puedan aplicar de verdad.\n\n"
+                "Mientras tanto, cada corrida de 'apply' solo muestra qué cambiaría "
+                "(dry-run) — así se puede revisar el impacto sin riesgo de romper nada.",
+                title="Modo shadow activo",
+                border_style="magenta",
+            )
+        )
+        if confirmar:
+            consola.print(
+                "[yellow]--confirmar fue ignorado:[/yellow] el período de shadow de "
+                f"este perfil vence el [bold]{estado_shadow.fecha_fin:%Y-%m-%d}[/bold]."
+            )
+    elif not confirmar:
         comando.extend(["--check", "--diff"])
         consola.print(
             "[yellow]Modo dry-run (no se aplica nada de verdad).[/yellow] "
             "Usa --confirmar para aplicar los cambios."
+        )
+    elif estado_shadow is not None:
+        consola.print(
+            f"[dim]El período de shadow de este perfil venció el "
+            f"{estado_shadow.fecha_fin:%Y-%m-%d} — aplicando en modo enforce.[/dim]"
         )
 
     try:
@@ -309,6 +339,42 @@ def exceptions_reject(
         raise typer.Exit(code=1) from error
 
     consola.print("[bold yellow]Excepción rechazada.[/bold yellow]")
+
+
+@app.command("shadow-status")
+def shadow_status(
+    perfil_nombre: str = typer.Option(
+        ..., "--profile", help="Nombre del perfil de configuración (ej. pyme-basico)"
+    ),
+    host: str = typer.Option("localhost", "--host", help="Identificador del sistema"),
+) -> None:
+    """Muestra si un perfil sigue en modo shadow para un host, y cuánto le queda."""
+    try:
+        perfil = cargar_perfil(perfil_nombre)
+    except PerfilNoEncontradoError as error:
+        consola.print(f"[bold red]Error:[/bold red] {error}")
+        raise typer.Exit(code=1) from error
+
+    estado = evaluar_modo_shadow(perfil, host, RepositorioEstadoShadow())
+
+    if estado is None:
+        consola.print(
+            f"El perfil '{perfil.nombre}' no usa modo shadow "
+            f"(modo_inicial='{perfil.modo_inicial}') — aplica siempre en modo enforce."
+        )
+        raise typer.Exit(code=0)
+
+    if estado.vigente:
+        consola.print(
+            f"[bold magenta]En shadow.[/bold magenta] Empezó el "
+            f"{estado.fecha_inicio:%Y-%m-%d}, vence el {estado.fecha_fin:%Y-%m-%d} "
+            f"— quedan [bold]{estado.dias_restantes}[/bold] día(s)."
+        )
+    else:
+        consola.print(
+            f"[bold green]Shadow vencido.[/bold green] Terminó el "
+            f"{estado.fecha_fin:%Y-%m-%d} — 'apply --confirmar' ya aplica cambios reales."
+        )
 
 
 @excepciones_app.command("list")

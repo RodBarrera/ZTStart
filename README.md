@@ -78,8 +78,9 @@ Leyenda: ✅ Completo &nbsp;·&nbsp; 🔄 En progreso &nbsp;·&nbsp; ⬜ Pendien
 - ✅ `approval_engine/` — solicitud, aprobación, rechazo y expiración de excepciones, persistido en YAML
 - ✅ `rules_engine/` — conecta hallazgos fallados con tags de Ansible vía las categorías del `explainer`; distingue hallazgos cubiertos de no cubiertos
 - ✅ `ansible_roles/zt_baseline` — aplica los 4 controles CIS de ejemplo del perfil `pyme-basico`, idempotencia validada manualmente
-- ✅ CLI completo: `scan`, `explain`, `apply`, `exceptions request/approve/reject/list`
+- ✅ CLI completo: `scan`, `explain`, `apply`, `shadow-status`, `exceptions request/approve/reject/list`
 - ✅ **Ciclo completo `scan → explain → apply` validado de punta a punta** (dry-run por defecto)
+- ✅ Modo `shadow` funcional — `apply --confirmar` no aplica cambios reales mientras el perfil esté en período de prueba (ver ADR-003 y ADR-009)
 
 **Infraestructura del proyecto**
 - ✅ Estructura base del repo, `pyproject.toml`, licencia, `CONTRIBUTING.md`
@@ -92,7 +93,6 @@ Leyenda: ✅ Completo &nbsp;·&nbsp; 🔄 En progreso &nbsp;·&nbsp; ⬜ Pendien
 - 🔄 Ampliar `zt_baseline` más allá de los 4 controles de ejemplo
 
 **Pendiente**
-- ⬜ Modo `shadow` funcional (loguear sin bloquear, ver ADR-003)
 - ⬜ Publicación en PyPI
 
 Detalle de las decisiones detrás de cada módulo en

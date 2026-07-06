@@ -14,6 +14,12 @@ from rich.panel import Panel
 from rich.table import Table
 
 from ztstart import __version__
+from ztstart.approval_engine import motor as motor_excepciones
+from ztstart.approval_engine.errores import (
+    ExcepcionNoEncontradaError,
+    TransicionInvalidaError,
+)
+from ztstart.approval_engine.models import EstadoExcepcion
 from ztstart.explainer.motor import explicar_todos
 from ztstart.scanner.openscap_wrapper import (
     EscaneoFallidoError,
@@ -28,6 +34,12 @@ app = typer.Typer(
     help="Arranca sistemas en modo zero-trust desde el día uno.",
     no_args_is_help=True,
 )
+excepciones_app = typer.Typer(
+    name="exceptions",
+    help="Solicita, aprueba, rechaza y lista excepciones al baseline deny-by-default.",
+    no_args_is_help=True,
+)
+app.add_typer(excepciones_app, name="exceptions")
 consola = Console()
 
 
@@ -161,6 +173,106 @@ def explain(
             titulo += " [dim](sin categoría específica)[/dim]"
 
         consola.print(Panel(cuerpo, title=titulo, border_style=estilo_borde))
+
+
+@excepciones_app.command("request")
+def exceptions_request(
+    regla_id: str = typer.Option(..., "--regla-id", help="ID de la regla a exceptuar"),
+    host: str = typer.Option(..., "--host", help="Sistema al que aplica la excepción"),
+    categoria: str = typer.Option(..., "--categoria", help="Categoría del explainer asociada"),
+    motivo: str = typer.Option(..., "--motivo", help="Por qué la organización necesita esto"),
+    solicitante: str = typer.Option(None, "--solicitante", help="Quién pide la excepción"),
+) -> None:
+    """Crea una nueva solicitud de excepción en estado pendiente."""
+    excepcion = motor_excepciones.solicitar(
+        regla_id=regla_id,
+        host=host,
+        categoria=categoria,
+        motivo_solicitud=motivo,
+        solicitante=solicitante,
+    )
+    consola.print(
+        f"[bold green]Solicitud creada[/bold green] con ID: [bold]{excepcion.id}[/bold]\n"
+        f"Estado: [yellow]{excepcion.estado.value}[/yellow] — "
+        f"usa ese ID para aprobarla o rechazarla."
+    )
+
+
+@excepciones_app.command("approve")
+def exceptions_approve(
+    id_excepcion: str = typer.Argument(..., help="ID de la solicitud a aprobar"),
+    aprobador: str = typer.Option(..., "--aprobador", help="Quién aprueba la excepción"),
+    dias: int = typer.Option(..., "--dias", help="Días de vigencia antes de que expire"),
+    motivo: str = typer.Option(None, "--motivo", help="Justificación de la aprobación"),
+) -> None:
+    """Aprueba una solicitud pendiente, con fecha de expiración obligatoria."""
+    try:
+        excepcion = motor_excepciones.aprobar(
+            id_excepcion, aprobador=aprobador, dias_vigencia=dias, motivo_decision=motivo
+        )
+    except ExcepcionNoEncontradaError as error:
+        consola.print(f"[bold red]Error:[/bold red] {error}")
+        raise typer.Exit(code=1) from error
+    except TransicionInvalidaError as error:
+        consola.print(f"[bold red]Error:[/bold red] {error}")
+        raise typer.Exit(code=1) from error
+
+    consola.print(
+        f"[bold green]Excepción aprobada.[/bold green] "
+        f"Expira: [bold]{excepcion.fecha_expiracion}[/bold]"
+    )
+
+
+@excepciones_app.command("reject")
+def exceptions_reject(
+    id_excepcion: str = typer.Argument(..., help="ID de la solicitud a rechazar"),
+    aprobador: str = typer.Option(..., "--aprobador", help="Quién rechaza la excepción"),
+    motivo: str = typer.Option(..., "--motivo", help="Por qué se rechaza (obligatorio)"),
+) -> None:
+    """Rechaza una solicitud pendiente."""
+    try:
+        motor_excepciones.rechazar(id_excepcion, aprobador=aprobador, motivo_decision=motivo)
+    except ExcepcionNoEncontradaError as error:
+        consola.print(f"[bold red]Error:[/bold red] {error}")
+        raise typer.Exit(code=1) from error
+    except TransicionInvalidaError as error:
+        consola.print(f"[bold red]Error:[/bold red] {error}")
+        raise typer.Exit(code=1) from error
+
+    consola.print("[bold yellow]Excepción rechazada.[/bold yellow]")
+
+
+@excepciones_app.command("list")
+def exceptions_list(
+    estado: str = typer.Option(
+        None, "--estado", help="Filtrar por estado: pendiente, aprobada, rechazada, expirada"
+    ),
+) -> None:
+    """Lista las excepciones registradas, opcionalmente filtradas por estado."""
+    filtro = EstadoExcepcion(estado) if estado else None
+    excepciones = motor_excepciones.listar(estado=filtro)
+
+    if not excepciones:
+        consola.print("[dim]No hay excepciones registradas.[/dim]")
+        raise typer.Exit(code=0)
+
+    tabla = Table(title="Excepciones")
+    tabla.add_column("ID", style="dim", max_width=10)
+    tabla.add_column("Regla")
+    tabla.add_column("Host")
+    tabla.add_column("Estado")
+    tabla.add_column("Expira")
+
+    for excepcion in excepciones:
+        tabla.add_row(
+            excepcion.id[:8],
+            excepcion.regla_id,
+            excepcion.host,
+            excepcion.estado.value,
+            str(excepcion.fecha_expiracion) if excepcion.fecha_expiracion else "—",
+        )
+
+    consola.print(tabla)
 
 
 if __name__ == "__main__":

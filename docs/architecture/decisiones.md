@@ -75,6 +75,38 @@ caso real se detecta en CI antes de mergear.
 ofrecerse más adelante para organizaciones que quieran redactar excepciones
 personalizadas — pero el motor de reglas seguirá siendo la ruta por defecto.
 
+## ADR-005: Persistencia de excepciones en YAML plano, no en base de datos
+
+**Decisión:** el `approval_engine` persiste todas las excepciones en un único
+archivo YAML (`ztstart/approval_engine/repositorio.py`), reescribiéndolo
+completo en cada cambio — no se usa SQLite ni ningún motor de base de datos.
+
+**Por qué:** el archivo de excepciones está pensado para vivir junto al resto
+de la configuración de la organización, en su propio repositorio git. Esto
+significa que el historial de quién aprobó qué y cuándo queda auditado
+gratis por `git log`/`git blame`, sin necesitar una base de datos ni
+infraestructura adicional — algo valioso para el público objetivo (PyMEs sin
+equipo de seguridad dedicado, ver README).
+
+**Limitación conocida:** la estrategia de escritura es "reescribir el archivo
+completo" (last-write-wins), adecuada para un solo operador local. Si el
+proyecto crece hacia aprobaciones concurrentes de múltiples personas al mismo
+tiempo, esto necesitará un backend con bloqueo o control de versiones más
+fino — está documentado como limitación en el docstring de
+`RepositorioExcepciones.guardar()`.
+
+**Reglas de negocio no negociables que el motor hace cumplir** (ver
+`ztstart/approval_engine/motor.py`):
+- Toda excepción nace en estado `PENDIENTE`.
+- Aprobar exige `dias_vigencia > 0` — no existen excepciones permanentes.
+- Solo se puede decidir (aprobar/rechazar) sobre una solicitud `PENDIENTE`;
+  intentar re-decidir sobre algo ya decidido lanza `TransicionInvalidaError`,
+  para no romper la trazabilidad de la decisión original.
+
+**Pendiente:** integrar `revisar_expiradas()` como parte del flujo de
+`ztstart scan`, para que las excepciones vencidas se detecten automáticamente
+en cada escaneo en vez de requerir un comando manual aparte.
+
 ## Pendiente de decidir
 
 - Formato exacto de persistencia de excepciones aprobadas (¿SQLite local?

@@ -20,6 +20,33 @@ zt_baseline_filesystems_a_deshabilitar:
 # cis_3.1.1 — Deshabilitar IP forwarding (este sistema no es un router/gateway)
 zt_baseline_deshabilitar_ip_forwarding: true
 
+# cis_3.3 — Endurecimiento de la pila de red (sysctls anti-spoofing/redirect/DoS)
+zt_baseline_aplicar_endurecimiento_pila_red: true
+zt_baseline_sysctl_endurecimiento_red_ipv4:
+  - { name: net.ipv4.conf.all.accept_redirects, value: "0" }
+  - { name: net.ipv4.conf.default.accept_redirects, value: "0" }
+  - { name: net.ipv4.conf.all.secure_redirects, value: "0" }
+  - { name: net.ipv4.conf.default.secure_redirects, value: "0" }
+  - { name: net.ipv4.conf.all.send_redirects, value: "0" }
+  - { name: net.ipv4.conf.default.send_redirects, value: "0" }
+  - { name: net.ipv4.conf.all.accept_source_route, value: "0" }
+  - { name: net.ipv4.conf.default.accept_source_route, value: "0" }
+  - { name: net.ipv4.conf.all.rp_filter, value: "1" }
+  - { name: net.ipv4.conf.default.rp_filter, value: "1" }
+  - { name: net.ipv4.tcp_syncookies, value: "1" }
+  - { name: net.ipv4.icmp_echo_ignore_broadcasts, value: "1" }
+  - { name: net.ipv4.icmp_ignore_bogus_error_responses, value: "1" }
+# Estos solo se aplican si el sistema tiene IPv6 habilitado (ver
+# cis_3_3_endurecimiento_pila_red.yml) — un servidor con IPv6 deshabilitado
+# a propósito no tiene estas rutas en /proc/sys y no debería fallar por eso.
+zt_baseline_sysctl_endurecimiento_red_ipv6:
+  - { name: net.ipv6.conf.all.accept_redirects, value: "0" }
+  - { name: net.ipv6.conf.default.accept_redirects, value: "0" }
+  - { name: net.ipv6.conf.all.accept_source_route, value: "0" }
+  - { name: net.ipv6.conf.default.accept_source_route, value: "0" }
+  - { name: net.ipv6.conf.all.accept_ra, value: "0" }
+  - { name: net.ipv6.conf.default.accept_ra, value: "0" }
+
 # cis_5.2.1 — Permisos del archivo de configuración de SSH
 zt_baseline_sshd_config_ruta: /etc/ssh/sshd_config
 zt_baseline_sshd_config_propietario: root

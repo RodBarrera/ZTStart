@@ -13,6 +13,9 @@
 - name: Importar control cis_3.1.1 (IP forwarding)
   ansible.builtin.import_tasks: cis_3_1_1_ip_forwarding.yml
 
+- name: Importar control cis_3.3 (endurecimiento de la pila de red)
+  ansible.builtin.import_tasks: cis_3_3_endurecimiento_pila_red.yml
+
 - name: Importar control cis_5.2.1 (permisos sshd_config)
   ansible.builtin.import_tasks: cis_5_2_1_permisos_sshd_config.yml
 

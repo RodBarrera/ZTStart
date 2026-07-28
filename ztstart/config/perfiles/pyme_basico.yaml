@@ -26,6 +26,12 @@ controles_incluidos:
   - id: "cis_3.1.1"
     categoria: "red_reenvio_trafico"
     motivo: "Deshabilitar IP forwarding en servidores que no son routers/gateways"
+  - id: "cis_3.3"
+    categoria: "endurecimiento_pila_red"
+    motivo: >
+      Protecciones sysctl contra redirecciones ICMP falsas, ruta de origen
+      forzada y saturación de conexiones — bajo costo, sin impacto funcional
+      típico en un servidor que no depende de estos comportamientos de red
   - id: "cis_5.2.1"
     categoria: "acceso_remoto_ssh"
     motivo: "Permisos correctos en sshd_config es de las mitigaciones más costo-efectivas que existen"

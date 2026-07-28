@@ -332,3 +332,55 @@ patrón semántico de "hardening de pila de red").
   `ztstart/scanner/parser.py`).
 - Mecanismo de expiración de excepciones: ¿un cron/systemd timer que corre
   `ztstart exceptions review`? ¿Verificación al inicio de cada `ztstart scan`?
+
+## ADR-012: Nueva categoría `endurecimiento_pila_red` (explainer + zt_baseline)
+
+**Decisión:** se agregó la categoría `endurecimiento_pila_red` al explainer
+(`explainer/categorias.py`) y su control correspondiente `cis_3.3` en
+`zt_baseline` (`cis_3_3_endurecimiento_pila_red.yml`), cubriendo el grupo de
+hallazgos más grande que quedó sin clasificar en la primera prueba real
+(ADR-011): redirecciones ICMP falsas, paquetes con ruta de origen forzada,
+reverse path filtering, SYN cookies, avisos de enrutador IPv6 no confiables,
+e ICMP broadcast/bogus. 12 `regla_id` reales de esa prueba, que antes caían
+en el fallback genérico, ahora clasifican correctamente (verificado
+ejecutando el explainer contra esos mismos IDs, no solo con datos de test
+inventados).
+
+**Por qué es una categoría separada de `red_reenvio_trafico` y no la misma:**
+son conceptualmente distintas. `red_reenvio_trafico` (`ip_forward`,
+`forwarding`) trata de si el sistema actúa como router — una propiedad
+binaria de rol. `endurecimiento_pila_red` trata de protegerse de ataques de
+red (spoofing, redirección, DoS) sin importar si el sistema enruta tráfico o
+no — un servidor que no es router igual necesita estas protecciones.
+Colapsarlas en una sola categoría habría hecho el mensaje en lenguaje simple
+menos preciso para el que aprueba una excepción.
+
+**Bug real encontrado al probar la tarea de Ansible antes de entregarla (no
+solo revisando sintaxis):** los 6 parámetros IPv6 del control fallaban con
+`No such file or directory` en cualquier sistema con IPv6 deshabilitado
+(rutas de `/proc/sys/net/ipv6/...` no existen ahí) — un caso realista para
+una PyME que desactivó IPv6 a propósito. Se corrigió agregando una tarea
+previa (`ansible.builtin.stat` sobre `/proc/sys/net/ipv6`) que detecta si
+IPv6 está disponible, y condicionando los 6 parámetros IPv6 a ese resultado;
+los 13 parámetros IPv4 se aplican siempre. La tarea de detección tiene que
+llevar los mismos tags que el resto del control — si queda sin tag, un
+`--tags cis_3.3` la excluye del todo y la variable que registra queda
+indefinida, rompiendo la condición `when` de las tareas IPv6 (encontrado
+también probando, no por inspección).
+
+**Validación real hecha:** `ansible-playbook --syntax-check` sobre el
+playbook completo; `ansible-lint` sobre la tarea nueva (sin warnings);
+ejecución real de la tarea dos veces seguidas confirmando `changed=0` en la
+segunda corrida; y una tercera prueba forzando drift a mano
+(`net.ipv4.tcp_syncookies` puesto en `0` directamente en `/proc/sys`) para
+confirmar que la tarea sí corrige un valor incorrecto de verdad
+(`changed=1`, valor final correcto) y vuelve a quedar idempotente después.
+
+**Efecto en el perfil `pyme-basico`:** pasó de 4 a 5 controles incluidos
+(`controles_incluidos`). El test `test_cargar_perfil_pyme_basico_real` se
+actualizó para reflejar el conteo real en vez de un número fijo que ya había
+quedado obsoleto una vez — vale la pena considerar en el futuro si ese test
+debería verificar propiedades (ej. "contiene al menos N controles") en vez
+de una igualdad exacta, para no tener que tocarlo cada vez que se agregue un
+control.
+

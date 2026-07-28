@@ -39,6 +39,7 @@ ansible-playbook ../playbook.yml --tags cis_5.4.1 --ask-become-pass
 |---|---|---|---|
 | `cis_1.1.1.1` | `cis_1_1_1_1_filesystems_no_usados.yml` | `servicios_innecesarios` | Bloquea la carga de módulos de filesystem no usados (cramfs, udf, etc.) |
 | `cis_3.1.1` | `cis_3_1_1_ip_forwarding.yml` | `red_reenvio_trafico` | Deshabilita IP forwarding vía sysctl |
+| `cis_3.3` | `cis_3_3_endurecimiento_pila_red.yml` | `endurecimiento_pila_red` | 19 parámetros sysctl: redirecciones ICMP, ruta de origen forzada, reverse path filtering, SYN cookies, router advertisements IPv6, ICMP bogus/broadcast |
 | `cis_5.2.1` | `cis_5_2_1_permisos_sshd_config.yml` | `acceso_remoto_ssh` | Restringe permisos de `sshd_config` a 0600, solo root |
 | `cis_5.4.1` | `cis_5_4_1_politica_contrasenas.yml` | `politica_contrasenas` | Ajusta `PASS_MAX_DAYS`/`PASS_MIN_DAYS`/`PASS_MIN_LEN` en `login.defs` |
 

@@ -24,9 +24,10 @@ def test_cargar_perfil_pyme_basico_real() -> None:
     perfil = cargar_perfil("pyme-basico")
 
     assert perfil.nombre == "pyme-basico"
-    assert len(perfil.controles_incluidos) == 4
+    assert len(perfil.controles_incluidos) == 5
     assert "acceso_remoto_ssh" in perfil.categorias_habilitadas
     assert "politica_contrasenas" in perfil.categorias_habilitadas
+    assert "endurecimiento_pila_red" in perfil.categorias_habilitadas
 
 
 def test_cargar_perfil_acepta_guion_o_guion_bajo() -> None:

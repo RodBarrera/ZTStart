@@ -1,0 +1,58 @@
+---
+# cis_3.3 — Endurecimiento de la pila de red (parámetros sysctl).
+#
+# Cubre protecciones contra redirecciones ICMP falsas, paquetes con ruta de
+# origen forzada, saturación SYN, avisos de enrutador IPv6 no confiables, y
+# abuso de ICMP — el mismo grupo de hallazgos que quedaba "sin categoría" en
+# el explainer antes de este cambio (medido en la primera prueba real contra
+# un servidor, ver ADR-011 en docs/architecture/decisiones.md).
+#
+# Deliberadamente NO incluye net.ipv4.ip_forward ni el forwarding de IPv6:
+# esos ya se manejan en cis_3.1.1 (categoría red_reenvio_trafico), que es
+# conceptualmente distinta de esta — "no ser un router" vs. "protegerse de
+# ataques de red aunque el sistema no sea un router".
+#
+# Los parámetros IPv6 se aplican solo si el sistema tiene IPv6 habilitado:
+# un servidor con IPv6 deshabilitado a propósito no tiene esas rutas en
+# /proc/sys, y no debería fallar por eso (encontrado probando esta tarea de
+# verdad antes de entregarla — ver convención de trabajo del proyecto).
+
+- name: Verificar si IPv6 está habilitado en este sistema
+  ansible.builtin.stat:
+    path: /proc/sys/net/ipv6
+  register: zt_baseline_ipv6_disponible
+  tags:
+    - cis_3.3
+    - endurecimiento_pila_red
+
+- name: Aplicar parámetros sysctl de endurecimiento de red (IPv4)
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/70-zt-baseline-endurecimiento-red.conf
+    sysctl_set: true
+    reload: true
+  loop: "{{ zt_baseline_sysctl_endurecimiento_red_ipv4 }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: zt_baseline_aplicar_endurecimiento_pila_red | bool
+  tags:
+    - cis_3.3
+    - endurecimiento_pila_red
+
+- name: Aplicar parámetros sysctl de endurecimiento de red (IPv6)
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/70-zt-baseline-endurecimiento-red.conf
+    sysctl_set: true
+    reload: true
+  loop: "{{ zt_baseline_sysctl_endurecimiento_red_ipv6 }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - zt_baseline_aplicar_endurecimiento_pila_red | bool
+    - zt_baseline_ipv6_disponible.stat.exists
+  tags:
+    - cis_3.3
+    - endurecimiento_pila_red

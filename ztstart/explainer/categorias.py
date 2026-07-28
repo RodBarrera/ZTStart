@@ -186,6 +186,41 @@ _registrar(
     )
 )
 
+_registrar(
+    PlantillaCategoria(
+        id="endurecimiento_pila_red",
+        nombre_legible="Endurecimiento de la pila de red (parámetros sysctl)",
+        palabras_clave=(
+            "accept_redirects",
+            "accept_source_route",
+            "secure_redirects",
+            "send_redirects",
+            "rp_filter",
+            "syncookies",
+            "accept_ra",
+            "icmp_echo_ignore_broadcasts",
+            "bogus_error_responses",
+        ),
+        mensaje_simple=(
+            "El sistema no tiene aplicadas varias protecciones de bajo nivel "
+            "contra técnicas de red comunes (redirecciones falsas, paquetes con "
+            "ruta de origen forzada, saturación de conexiones, o abuso de ICMP)."
+        ),
+        por_que_importa=(
+            "Estas protecciones del kernel evitan técnicas clásicas de "
+            "intercepción y denegación de servicio en la red. Sin ellas, alguien "
+            "en la misma red (o que logre interponerse en el camino del tráfico) "
+            "tiene herramientas adicionales para redirigir o interrumpir las "
+            "comunicaciones del servidor."
+        ),
+        que_pasa_si_se_ignora=(
+            "Un atacante en la red local podría redirigir tráfico hacia sí mismo "
+            "(un ataque de intermediario) o saturar el servidor con conexiones "
+            "falsas, sin que estas protecciones básicas se lo impidan."
+        ),
+    )
+)
+
 
 def categorias_disponibles() -> tuple[str, ...]:
     """IDs de todas las categorías registradas — útil para tests y documentación."""

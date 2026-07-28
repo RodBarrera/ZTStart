@@ -74,10 +74,10 @@ Leyenda: ✅ Completo &nbsp;·&nbsp; 🔄 En progreso &nbsp;·&nbsp; ⬜ Pendien
 
 **Núcleo (scan → explain → apply → exceptions)**
 - ✅ `scanner/` — wrapper de OpenSCAP + parser de resultados XCCDF → modelos internos
-- ✅ `explainer/` — clasificación por palabras clave + traducción a lenguaje simple (7 categorías, con fallback genérico honesto)
+- ✅ `explainer/` — clasificación por palabras clave + traducción a lenguaje simple (8 categorías, con fallback genérico honesto)
 - ✅ `approval_engine/` — solicitud, aprobación, rechazo y expiración de excepciones, persistido en YAML
 - ✅ `rules_engine/` — conecta hallazgos fallados con tags de Ansible vía las categorías del `explainer`; distingue hallazgos cubiertos de no cubiertos
-- ✅ `ansible_roles/zt_baseline` — aplica los 4 controles CIS de ejemplo del perfil `pyme-basico`, idempotencia validada manualmente
+- ✅ `ansible_roles/zt_baseline` — aplica los 5 controles CIS de ejemplo del perfil `pyme-basico`, idempotencia validada manualmente
 - ✅ CLI completo: `scan`, `explain`, `apply`, `shadow-status`, `exceptions request/approve/reject/list`
 - ✅ **Ciclo completo `scan → explain → apply` validado de punta a punta** (dry-run por defecto)
 - ✅ Modo `shadow` funcional — `apply --confirmar` no aplica cambios reales mientras el perfil esté en período de prueba (ver ADR-003 y ADR-009)
@@ -88,10 +88,11 @@ Leyenda: ✅ Completo &nbsp;·&nbsp; 🔄 En progreso &nbsp;·&nbsp; ⬜ Pendien
 - ✅ Perfil de configuración de ejemplo `pyme-basico`
 
 - ✅ **Pruebas de integración end-to-end contra un servidor real** (VM Debian 12 sobre VMware, no un contenedor) — ciclo `scan → explain → apply` corrido de punta a punta con datos reales: 887 reglas evaluadas, 65.73% de cumplimiento inicial, modo shadow validado en systemd real (ver ADR-010)
+- ✅ Categoría `endurecimiento_pila_red` (explainer) + control `cis_3.3` (zt_baseline) — cubre 19 sysctls de hardening de red IPv4/IPv6 (redirecciones ICMP, ruta de origen forzada, rp_filter, syncookies, router advertisements IPv6). Re-corrido contra el mismo servidor real: cobertura del perfil subió de 30/110 a **49/110 hallazgos cubiertos** (ver ADR-012 y ADR-013)
 
 **En progreso**
-- 🔄 Ampliar categorías del `explainer/` más allá de las 7 actuales — en la prueba real, 55 de 110 hallazgos (50%) cayeron en el fallback genérico; los grupos más grandes sin cubrir son sysctls de hardening de red IPv4/IPv6, módulos de kernel deshabilitados, y paquetes instalados/removidos genéricos (ver ADR-011)
-- 🔄 Ampliar `zt_baseline` más allá de los 4 controles de ejemplo — en la misma prueba, solo 30 de 110 hallazgos tenían tarea de Ansible correspondiente (ver ADR-011)
+- 🔄 Ampliar categorías del `explainer/` más allá de las 8 actuales — quedan 61/110 hallazgos sin cubrir en la última corrida real; los grupos más grandes restantes son paquetes instalados/removidos genéricos, módulos de kernel restantes (freevxfs/hfs/hfsplus/jffs2), montajes `/tmp` y `/dev/shm`, y hardening misceláneo de kernel (ASLR, ptrace_scope, coredumps) (ver ADR-013)
+- 🔄 Ampliar `zt_baseline` más allá de los 5 controles actuales — mismos grupos de arriba, sin tarea de Ansible correspondiente todavía
 
 **Pendiente**
 - ⬜ Publicación en PyPI

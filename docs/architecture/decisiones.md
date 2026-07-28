@@ -384,3 +384,43 @@ debería verificar propiedades (ej. "contiene al menos N controles") en vez
 de una igualdad exacta, para no tener que tocarlo cada vez que se agregue un
 control.
 
+## ADR-013: Segunda corrida real (post ADR-012) — cobertura sube de 30/110 a 49/110
+
+**Contexto:** tras agregar la categoría `endurecimiento_pila_red` y el
+control `cis_3.3` (ADR-012), se corrió de nuevo el ciclo completo
+`scan → explain → apply` contra la misma VM Debian 12 del ADR-010, para
+medir el efecto real del cambio (no solo confiar en los tests unitarios).
+
+**Resultado:** la cobertura del perfil `pyme-basico` subió de **30/110** a
+**49/110** hallazgos cubiertos (61 siguen sin tarea de Ansible). Subió 19,
+no exactamente 12 — los 12 `regla_id` que el ADR-012 puntualiza como
+verificados por test, más `send_redirects` (all/default, que ya coincidía
+con `redirects` como keyword) y el forwarding de IPv6, que ya estaban
+cubiertos por categorías existentes pero ahora también entran al plan de
+aplicación real por primera vez en esta corrida.
+
+**El control `cis_3.3` se ejecutó de punta a punta en un sistema con IPv6
+habilitado** (a diferencia del sandbox de pruebas donde se desarrolló, que
+no tenía IPv6): la tarea de detección (`ansible.builtin.stat` sobre
+`/proc/sys/net/ipv6`) determinó correctamente que IPv6 estaba disponible, y
+las 6 tareas IPv6 corrieron sin error junto con las 13 IPv4 — confirmando
+que la corrección del ADR-012 funciona en ambos escenarios (con y sin
+IPv6), no solo en el que se detectó el bug originalmente.
+
+**Grupos más grandes que quedan en los 61 no cubiertos**, según el
+`explain` de esta corrida — candidatos naturales para la próxima categoría
+a agregar:
+- Paquetes instalados/removidos genéricos (`aide`, `apparmor-utils`,
+  `iptables`, `ufw`, `chrony`, `rsync`, `rpcbind`, `inetutils-telnet`,
+  `systemd-journal-remote`)
+- Módulos de kernel restantes (`freevxfs`, `hfs`, `hfsplus`, `jffs2`) — el
+  mismo patrón señalado en el ADR-011 sigue sin resolverse: `cramfs` y
+  `usb-storage` calzan en `servicios_innecesarios` pero sus hermanos no
+- Opciones de montaje `/tmp` y `/dev/shm` (`nodev`/`noexec`/`nosuid`)
+- Hardening misceláneo de kernel: ASLR (`randomize_va_space`),
+  `ptrace_scope`, `suid_dumpable`, deshabilitar coredumps de usuario
+
+Se decide dejar el trabajo aquí por ahora (28-07-2026) — el criterio de
+"parar" fue simplemente una decisión de sesión, no una señal de que el
+proyecto esté completo en este punto.
+

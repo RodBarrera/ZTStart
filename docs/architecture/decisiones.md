@@ -249,6 +249,78 @@ período) ni uno para extenderlo — por ahora solo se puede editar
 superficie, y el archivo ya es auditable por git) pero puede necesitar un
 comando explícito más adelante.
 
+## ADR-010: VM real (Vagrant + VMware Workstation) como entorno de pruebas de integración
+
+**Decisión:** las pruebas de integración en un sistema real (no contenedor) se
+corren en una VM Debian 12 levantada con Vagrant sobre VMware Workstation
+(provider `vmware_desktop`), no en KVM/libvirt anidado — porque el entorno de
+desarrollo real corre Kali dentro de VMware sin virtualización anidada
+expuesta al guest, y crear la VM de prueba como "hermana" (mismo nivel que
+Kali, no dentro de él) evita ese problema por completo.
+
+**Por qué no bastaba con el contenedor del ADR-007:** un contenedor no tiene
+systemd real ni arranque completo, así que tareas de `zt_baseline` que tocan
+`/etc/modprobe.d/`, servicios systemd, o el propio ciclo de vida de Ansible
+con `become: true` no se comportan igual que en un servidor real. La VM
+resuelve esto sin costo (VMware ya estaba disponible) y sin depender de un
+proveedor cloud.
+
+**Contenido SCAP usado:** el paquete `ssg-debian` del repositorio de Debian
+12 estable está desactualizado — no incluye datastream para Debian 12 (se
+quedó en Debian 11) y, más importante, es anterior a que el proyecto
+ComplianceAsCode agregara soporte de perfiles CIS para Debian (eso llegó en
+la versión 0.1.78 del proyecto upstream, no antes). Por eso el datastream
+real (`ssg-debian12-ds.xml` con el perfil `cis_level1_server`) se descarga
+directo del release de GitHub del proyecto (`ComplianceAsCode/content`), no
+del `apt install ssg-debian`.
+
+**Procedimiento resumido:**
+1. `Vagrantfile` con `config.vm.box = "bento/debian-12"` y provider
+   `vmware_desktop`
+2. `vagrant up --provider=vmware_desktop`
+3. Dentro de la VM: `apt install openscap-scanner ansible`, luego descargar
+   `scap-security-guide-<versión>.zip` del release de ComplianceAsCode/content
+   y usar el `ssg-debian12-ds.xml` de ahí, no el de apt
+4. Ciclo normal: `ztstart scan → explain → apply --confirmar`
+5. `vagrant snapshot save limpio` / `vagrant snapshot restore limpio` para
+   repetir pruebas desde cero sin reinstalar todo
+
+## ADR-011: Hallazgos de cobertura, medidos en una prueba real (CIS Debian 12, perfil Server L1)
+
+**Contexto:** la primera corrida real de punta a punta (VM Debian 12, ver
+ADR-010) contra el perfil CIS Level 1 Server dio 887 reglas evaluadas, 110
+fallidas, 65.73% de cumplimiento inicial. Esto permitió medir por primera vez
+—con datos reales, no estimados— qué tan completos están hoy el `explainer`
+y `zt_baseline`.
+
+**Hallazgo 1 — `explainer`:** de las 110 reglas fallidas, 55 (el 50%) cayeron
+en el fallback genérico "sin categoría específica" en vez de una traducción
+real. Los grupos más grandes sin cubrir:
+- Sysctls de hardening de red IPv4/IPv6 (`accept_redirects`, `rp_filter`,
+  `secure_redirects`, `accept_source_route`, `syncookies`, etc.) — el bloque
+  más grande, ~25 reglas
+- Módulos de kernel deshabilitados (`freevxfs`, `hfs`, `hfsplus`, `jffs2`) —
+  llama la atención que `cramfs` y `usb-storage` sí calzan en la categoría
+  "software sin uso" pero estos módulos hermanos no, lo que sugiere que el
+  matching por keywords actual es más frágil de lo esperado y no generaliza
+  bien dentro de la misma familia de reglas
+- Paquetes instalados/removidos genéricos (`aide`, `apparmor-utils`,
+  `iptables`, `ufw`, `chrony`, `rsync`, `rpcbind`, `inetutils-telnet`)
+
+**Hallazgo 2 — `zt_baseline`:** de las mismas 110 reglas fallidas, solo 30
+tenían una tarea de Ansible correspondiente en alguno de los 4 controles
+actuales (`acceso_remoto_ssh`, `politica_contrasenas`, `red_reenvio_trafico`,
+`servicios_innecesarios`). Las 80 restantes se reportaron como "no cubiertas"
+en el plan de `apply`, sin detener la ejecución — que es el comportamiento
+esperado (aplicar lo que sí se puede, avisar del resto), pero deja claro que
+ampliar `zt_baseline` más allá de los 4 controles de ejemplo es más urgente
+de lo que parecía antes de tener este dato.
+
+**Siguiente paso sugerido (no decidido todavía):** priorizar el hallazgo 1
+sobre el bloque de sysctls de red antes que los paquetes sueltos, porque es
+el grupo más grande y más homogéneo (todas las reglas ahí comparten el mismo
+patrón semántico de "hardening de pila de red").
+
 ## Pendiente de decidir
 
 - Formato exacto de persistencia de excepciones aprobadas (¿SQLite local?

@@ -87,10 +87,11 @@ Leyenda: ✅ Completo &nbsp;·&nbsp; 🔄 En progreso &nbsp;·&nbsp; ⬜ Pendien
 - ✅ CI (ruff, mypy strict, pytest, ansible-lint)
 - ✅ Perfil de configuración de ejemplo `pyme-basico`
 
+- ✅ **Pruebas de integración end-to-end contra un servidor real** (VM Debian 12 sobre VMware, no un contenedor) — ciclo `scan → explain → apply` corrido de punta a punta con datos reales: 887 reglas evaluadas, 65.73% de cumplimiento inicial, modo shadow validado en systemd real (ver ADR-010)
+
 **En progreso**
-- 🔄 Pruebas de integración end-to-end contra un servidor real (no un contenedor) — el entorno de desarrollo carece de systemd/muchos servicios que el CIS Benchmark evalúa
-- 🔄 Ampliar categorías del `explainer/` más allá de las 7 actuales
-- 🔄 Ampliar `zt_baseline` más allá de los 4 controles de ejemplo
+- 🔄 Ampliar categorías del `explainer/` más allá de las 7 actuales — en la prueba real, 55 de 110 hallazgos (50%) cayeron en el fallback genérico; los grupos más grandes sin cubrir son sysctls de hardening de red IPv4/IPv6, módulos de kernel deshabilitados, y paquetes instalados/removidos genéricos (ver ADR-011)
+- 🔄 Ampliar `zt_baseline` más allá de los 4 controles de ejemplo — en la misma prueba, solo 30 de 110 hallazgos tenían tarea de Ansible correspondiente (ver ADR-011)
 
 **Pendiente**
 - ⬜ Publicación en PyPI

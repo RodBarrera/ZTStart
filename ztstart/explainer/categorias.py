@@ -85,6 +85,14 @@ _registrar(
             "filesystem",
             "cramfs",
             "usb-storage",
+            # Genérico: cubre cualquier regla kernel_module_X_disabled, no
+            # solo cramfs/usb-storage. El rol zt_baseline ya bloqueaba
+            # freevxfs/hfs/hfsplus/jffs2 en cis_1_1_1_1_filesystems_no_usados
+            # desde el principio (misma tarea, mismo bucle) — el explainer
+            # simplemente no los reconocía todavía, así que se reportaban
+            # como "no cubiertos" pese a que ya se estaban remediando en
+            # cada apply. Ver ADR-015 en docs/architecture/decisiones.md.
+            "kernel_module",
         ),
         mensaje_simple=(
             "Hay software o funcionalidad instalada que probablemente no se usa "

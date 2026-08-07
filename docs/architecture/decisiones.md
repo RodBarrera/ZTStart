@@ -498,3 +498,49 @@ categoría realmente cubre las reglas nuevas que empiece a capturar, o el
 número de "cubiertos" que ve el usuario podría inflarse sin que haya
 remediación real detrás.
 
+## ADR-015: Corrección de cobertura fantasma en `servicios_innecesarios` (sin cambios en Ansible)
+
+**Contexto:** revisando los grupos pendientes del ADR-014, se encontró que
+`ansible_roles/zt_baseline/tasks/cis_1_1_1_1_filesystems_no_usados.yml` ya
+bloqueaba los 8 módulos de filesystem desde el principio del proyecto —
+`cramfs`, `freevxfs`, `jffs2`, `hfs`, `hfsplus`, `squashfs`, `udf`,
+`usb-storage` (ver `zt_baseline_filesystems_a_deshabilitar` en
+`defaults/main.yml`) — pero el explainer solo tenía las palabras clave
+`cramfs` y `usb-storage` en la categoría `servicios_innecesarios`. Los
+otros 4 (`freevxfs`, `hfs`, `hfsplus`, `jffs2`) caían en el fallback
+genérico y `rules_engine` los reportaba como "no cubiertos" en cada
+`apply`, aunque la tarea de Ansible **ya los estaba remediando** en cada
+corrida real (se puede confirmar en los diffs de las corridas anteriores:
+el bloque de `/etc/modprobe.d/modprobe-disable-filesystems.conf` siempre
+incluyó las 8 líneas, incluyendo `install freevxfs /bin/true`, etc.).
+
+**Decisión:** se agregó la palabra clave genérica `kernel_module` a
+`servicios_innecesarios` (en vez de listar cada módulo por separado) —
+cubre estos 4 y cualquier regla `kernel_module_X_disabled` futura sin
+tener que tocar el explainer de nuevo cada vez que se agregue un módulo a
+la lista de `defaults/main.yml`.
+
+**Por qué no hubo que tocar `zt_baseline` ni el perfil `pyme-basico`:** la
+remediación ya existía; esto era puramente un problema de que el explainer
+no reconocía hallazgos que la automatización ya cubría. Es el primer caso
+del proyecto donde arreglar la clasificación por sí sola sube el número de
+"cubiertos" sin agregar ninguna tarea de Ansible nueva — vale la pena
+recordar este patrón: antes de escribir una tarea de Ansible nueva para un
+grupo de hallazgos sin categoría, conviene revisar primero si la
+remediación ya existe y solo falta el matching del explainer.
+
+**Riesgo de colisión de la palabra clave `kernel_module` evaluado:** se
+verificó que ninguna regla `sysctl_kernel_*` (ej.
+`sysctl_kernel_randomize_va_space`, `sysctl_kernel_yama_ptrace_scope`)
+contiene la subcadena `kernel_module` — son prefijos distintos
+(`sysctl_kernel_` vs. `kernel_module_`), así que no hay colisión. Test de
+regresión explícito agregado para confirmarlo: esas reglas deben seguir en
+el fallback honesto, porque a diferencia de los filesystems, no tienen
+ninguna tarea de Ansible que las remedie todavía.
+
+**Efecto medido (con datos reales, verificado ejecutando el explainer
+contra los `regla_id` reales, no solo con tests inventados):** 4 hallazgos
+más pasan de "no cubierto" a "cubierto" sin ningún cambio en Ansible.
+Cobertura del perfil `pyme-basico` esperada: de 58/110 a 62/110 — pendiente
+de confirmar contra la VM real, igual que los cambios anteriores.
+

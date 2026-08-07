@@ -1,5 +1,7 @@
 """Tests para ztstart.explainer.motor."""
 
+import pytest
+
 from ztstart.explainer.motor import clasificar, explicar, explicar_todos
 from ztstart.scanner.models import HallazgoRegla, ResultadoRegla, Severidad
 
@@ -275,3 +277,47 @@ def test_package_pam_pwquality_installed_sigue_yendo_a_politica_contrasenas() ->
 
     assert categoria is not None
     assert categoria.id == "politica_contrasenas"
+
+
+# --- servicios_innecesarios: módulos de kernel restantes (ADR-015) ---
+#
+# El rol zt_baseline ya bloqueaba estos 4 módulos desde el principio (misma
+# tarea que cramfs/usb-storage); lo que faltaba era que el explainer los
+# reconociera como cubiertos por la categoría correcta.
+
+
+@pytest.mark.parametrize(
+    "regla_id",
+    [
+        "xccdf_org.ssgproject.content_rule_kernel_module_freevxfs_disabled",
+        "xccdf_org.ssgproject.content_rule_kernel_module_hfs_disabled",
+        "xccdf_org.ssgproject.content_rule_kernel_module_hfsplus_disabled",
+        "xccdf_org.ssgproject.content_rule_kernel_module_jffs2_disabled",
+    ],
+)
+def test_clasifica_kernel_module_disabled_como_servicios_innecesarios(regla_id: str) -> None:
+    hallazgo = _hallazgo(regla_id=regla_id, titulo="Disable Mounting of x Filesystems")
+
+    categoria = clasificar(hallazgo)
+
+    assert categoria is not None
+    assert categoria.id == "servicios_innecesarios"
+
+
+def test_sysctl_kernel_no_se_confunde_con_kernel_module() -> None:
+    """Regresión: la palabra clave 'kernel_module' no debe capturar reglas
+    sysctl_kernel_* (randomize_va_space, yama_ptrace_scope, etc.) — son
+    conceptualmente distintas (deshabilitar un módulo vs. ajustar un
+    parámetro de hardening del kernel en ejecución) y ninguna tiene tarea de
+    Ansible todavía, así que deben seguir en el fallback honesto."""
+    hallazgo_aslr = _hallazgo(
+        regla_id="xccdf_org.ssgproject.content_rule_sysctl_kernel_randomize_va_space",
+        titulo="Enable Randomized Layout of Virtual Address Space",
+    )
+    hallazgo_ptrace = _hallazgo(
+        regla_id="xccdf_org.ssgproject.content_rule_sysctl_kernel_yama_ptrace_scope",
+        titulo="Restrict Exposed Kernel Pointer Addresses Access",
+    )
+
+    assert clasificar(hallazgo_aslr) is None
+    assert clasificar(hallazgo_ptrace) is None

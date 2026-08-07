@@ -1,0 +1,43 @@
+---
+# cis_paquetes_seguridad — Instalar herramientas de seguridad recomendadas
+# y remover paquetes innecesarios/inseguros.
+#
+# No corresponde a un único ID numerado de CIS: agrupa varios controles
+# distintos del benchmark (integridad de archivos, sincronización de hora,
+# apparmor, firewall, remoción de servicios legados) que comparten la misma
+# naturaleza — son puramente estado de instalación de dpkg, no configuración
+# ni activación de servicios. Ver ADR-013 y ADR-014 en
+# docs/architecture/decisiones.md para el detalle de por qué se agruparon así.
+#
+# Deliberadamente NO incluye cis_1.2.2 (construir la base de datos de AIDE,
+# regla aide_build_database): eso requiere correr `aideinit` y mover el
+# archivo de base de datos, es una operación larga y con más superficie de
+# error que una simple instalación de paquete — se deja para un control
+# aparte más adelante en vez de forzarlo dentro de esta tarea genérica.
+
+- name: Instalar paquetes de seguridad recomendados
+  ansible.builtin.apt:
+    name: "{{ zt_baseline_paquetes_seguridad_instalar }}"
+    state: present
+    # Deliberadamente SIN update_cache: true. Un `apt-get update` completo
+    # falla si CUALQUIER repo de terceros configurado en el sistema está
+    # roto o inalcanzable (ej. nodesource, docker, un PPA vencido) — no
+    # deberíamos poder tumbar todo un control de seguridad por un repo que
+    # no tiene nada que ver con los paquetes que estamos instalando. Se
+    # asume que el sistema mantiene su caché de apt razonablemente al día
+    # por su cuenta (encontrado probando esta tarea de verdad: falló en el
+    # sandbox de pruebas por un repo de nodesource ajeno con la llave
+    # vencida — ver ADR-014).
+  when: zt_baseline_gestionar_paquetes_seguridad | bool
+  tags:
+    - cis_paquetes_seguridad
+    - gestion_paquetes_seguridad
+
+- name: Remover paquetes innecesarios o inseguros
+  ansible.builtin.apt:
+    name: "{{ zt_baseline_paquetes_seguridad_remover }}"
+    state: absent
+  when: zt_baseline_gestionar_paquetes_seguridad | bool
+  tags:
+    - cis_paquetes_seguridad
+    - gestion_paquetes_seguridad

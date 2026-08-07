@@ -74,10 +74,10 @@ Leyenda: ✅ Completo &nbsp;·&nbsp; 🔄 En progreso &nbsp;·&nbsp; ⬜ Pendien
 
 **Núcleo (scan → explain → apply → exceptions)**
 - ✅ `scanner/` — wrapper de OpenSCAP + parser de resultados XCCDF → modelos internos
-- ✅ `explainer/` — clasificación por palabras clave + traducción a lenguaje simple (8 categorías, con fallback genérico honesto)
+- ✅ `explainer/` — clasificación por palabras clave + traducción a lenguaje simple (9 categorías, con fallback genérico honesto)
 - ✅ `approval_engine/` — solicitud, aprobación, rechazo y expiración de excepciones, persistido en YAML
 - ✅ `rules_engine/` — conecta hallazgos fallados con tags de Ansible vía las categorías del `explainer`; distingue hallazgos cubiertos de no cubiertos
-- ✅ `ansible_roles/zt_baseline` — aplica los 5 controles CIS de ejemplo del perfil `pyme-basico`, idempotencia validada manualmente
+- ✅ `ansible_roles/zt_baseline` — aplica los 6 controles CIS de ejemplo del perfil `pyme-basico`, idempotencia validada manualmente
 - ✅ CLI completo: `scan`, `explain`, `apply`, `shadow-status`, `exceptions request/approve/reject/list`
 - ✅ **Ciclo completo `scan → explain → apply` validado de punta a punta** (dry-run por defecto)
 - ✅ Modo `shadow` funcional — `apply --confirmar` no aplica cambios reales mientras el perfil esté en período de prueba (ver ADR-003 y ADR-009)
@@ -89,10 +89,11 @@ Leyenda: ✅ Completo &nbsp;·&nbsp; 🔄 En progreso &nbsp;·&nbsp; ⬜ Pendien
 
 - ✅ **Pruebas de integración end-to-end contra un servidor real** (VM Debian 12 sobre VMware, no un contenedor) — ciclo `scan → explain → apply` corrido de punta a punta con datos reales: 887 reglas evaluadas, 65.73% de cumplimiento inicial, modo shadow validado en systemd real (ver ADR-010)
 - ✅ Categoría `endurecimiento_pila_red` (explainer) + control `cis_3.3` (zt_baseline) — cubre 19 sysctls de hardening de red IPv4/IPv6 (redirecciones ICMP, ruta de origen forzada, rp_filter, syncookies, router advertisements IPv6). Re-corrido contra el mismo servidor real: cobertura del perfil subió de 30/110 a **49/110 hallazgos cubiertos** (ver ADR-012 y ADR-013)
+- ✅ Categoría `gestion_paquetes_seguridad` (explainer) + control `cis_paquetes_seguridad` (zt_baseline) — instala `aide`, `apparmor-utils`, `systemd-journal-remote`, `iptables`, `ufw`, `chrony`; remueve `rsync`, `inetutils-telnet`, `rpcbind`. Probado con instalación/remoción real (no solo sintaxis, ver ADR-014). Cobertura estimada en 58/110 (49 + 9 hallazgos nuevos) — **pendiente de confirmar** con una corrida real contra la VM, igual que se hizo para los cambios anteriores
 
 **En progreso**
-- 🔄 Ampliar categorías del `explainer/` más allá de las 8 actuales — quedan 61/110 hallazgos sin cubrir en la última corrida real; los grupos más grandes restantes son paquetes instalados/removidos genéricos, módulos de kernel restantes (freevxfs/hfs/hfsplus/jffs2), montajes `/tmp` y `/dev/shm`, y hardening misceláneo de kernel (ASLR, ptrace_scope, coredumps) (ver ADR-013)
-- 🔄 Ampliar `zt_baseline` más allá de los 5 controles actuales — mismos grupos de arriba, sin tarea de Ansible correspondiente todavía
+- 🔄 Ampliar categorías del `explainer/` más allá de las 9 actuales — quedan ~52/110 hallazgos sin cubrir (estimado); los grupos más grandes restantes son módulos de kernel (freevxfs/hfs/hfsplus/jffs2), montajes `/tmp` y `/dev/shm`, hardening misceláneo de kernel (ASLR, ptrace_scope, coredumps), y `aide_build_database` (dejado fuera a propósito, ver ADR-014)
+- 🔄 Ampliar `zt_baseline` más allá de los 6 controles actuales — mismos grupos de arriba, sin tarea de Ansible correspondiente todavía
 
 **Pendiente**
 - ⬜ Publicación en PyPI

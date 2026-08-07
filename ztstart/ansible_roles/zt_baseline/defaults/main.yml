@@ -57,3 +57,18 @@ zt_baseline_sshd_config_permisos: "0600"
 zt_baseline_password_max_dias: 365
 zt_baseline_password_min_dias: 1
 zt_baseline_password_min_longitud: 14
+
+# cis_paquetes_seguridad — Instalar herramientas recomendadas / remover
+# paquetes innecesarios (ver comentario completo en la tarea)
+zt_baseline_gestionar_paquetes_seguridad: true
+zt_baseline_paquetes_seguridad_instalar:
+  - aide
+  - apparmor-utils
+  - systemd-journal-remote
+  - iptables
+  - ufw
+  - chrony
+zt_baseline_paquetes_seguridad_remover:
+  - rsync
+  - inetutils-telnet
+  - rpcbind

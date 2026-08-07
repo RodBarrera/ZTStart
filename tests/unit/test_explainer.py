@@ -189,3 +189,89 @@ def test_sysctl_log_martians_sigue_yendo_a_auditoria_no_a_endurecimiento() -> No
 
     assert categoria is not None
     assert categoria.id == "auditoria_registro"
+
+
+# --- gestion_paquetes_seguridad ---
+#
+# regla_id reales de la segunda prueba de integración (ver ADR-013/ADR-014).
+
+
+def test_clasifica_package_aide_installed_como_gestion_paquetes() -> None:
+    hallazgo = _hallazgo(
+        regla_id="xccdf_org.ssgproject.content_rule_package_aide_installed",
+        titulo="Install AIDE",
+    )
+
+    categoria = clasificar(hallazgo)
+
+    assert categoria is not None
+    assert categoria.id == "gestion_paquetes_seguridad"
+
+
+def test_clasifica_package_ufw_installed_como_gestion_paquetes() -> None:
+    hallazgo = _hallazgo(
+        regla_id="xccdf_org.ssgproject.content_rule_package_ufw_installed",
+        titulo="Install ufw",
+    )
+
+    categoria = clasificar(hallazgo)
+
+    assert categoria is not None
+    assert categoria.id == "gestion_paquetes_seguridad"
+
+
+def test_clasifica_package_rpcbind_removed_como_gestion_paquetes() -> None:
+    hallazgo = _hallazgo(
+        regla_id="xccdf_org.ssgproject.content_rule_package_rpcbind_removed",
+        titulo="Uninstall rpcbind Package",
+    )
+
+    categoria = clasificar(hallazgo)
+
+    assert categoria is not None
+    assert categoria.id == "gestion_paquetes_seguridad"
+
+
+def test_clasifica_package_inetutils_telnet_removed_como_gestion_paquetes() -> None:
+    hallazgo = _hallazgo(
+        regla_id="xccdf_org.ssgproject.content_rule_package_inetutils-telnet_removed",
+        titulo="Uninstall inetutils-telnet Package",
+    )
+
+    categoria = clasificar(hallazgo)
+
+    assert categoria is not None
+    assert categoria.id == "gestion_paquetes_seguridad"
+
+
+def test_aide_build_database_no_clasifica_en_gestion_paquetes() -> None:
+    """Regresión intencional: aide_build_database NO debe clasificar acá.
+
+    A diferencia de aide_installed, esta regla no tiene tarea de Ansible
+    (ver limitación documentada en ansible_roles/zt_baseline/README.md) —
+    debe seguir cayendo en el fallback honesto, no aparentar estar cubierta.
+    """
+    hallazgo = _hallazgo(
+        regla_id="xccdf_org.ssgproject.content_rule_aide_build_database",
+        titulo="Build and Test AIDE Database",
+    )
+
+    categoria = clasificar(hallazgo)
+
+    assert categoria is None
+
+
+def test_package_pam_pwquality_installed_sigue_yendo_a_politica_contrasenas() -> None:
+    """Regresión: aunque contiene '_installed', esta regla ya se clasificaba
+    correctamente por otra categoría más específica (politica_contrasenas,
+    registrada antes en el orden de CATEGORIAS) — gestion_paquetes_seguridad
+    no debe robarle el match."""
+    hallazgo = _hallazgo(
+        regla_id="xccdf_org.ssgproject.content_rule_package_pam_pwquality_installed",
+        titulo="Install pam_pwquality Package",
+    )
+
+    categoria = clasificar(hallazgo)
+
+    assert categoria is not None
+    assert categoria.id == "politica_contrasenas"

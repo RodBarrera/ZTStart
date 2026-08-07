@@ -38,6 +38,14 @@ controles_incluidos:
   - id: "cis_5.4.1"
     categoria: "politica_contrasenas"
     motivo: "Políticas de contraseña mínimas — bajo costo de implementación, alto impacto"
+  - id: "cis_paquetes_seguridad"
+    categoria: "gestion_paquetes_seguridad"
+    motivo: >
+      Instalar herramientas de seguridad recomendadas (integridad de
+      archivos, sincronización de hora, apparmor, firewall) y remover
+      paquetes legados/innecesarios (rsync, telnet, rpcbind) — solo toca
+      estado de instalación de dpkg, no configuración ni activación de
+      servicios, así que el riesgo operacional es bajo
   # ... lista completa en docs/rules/pyme-basico.md (pendiente de completar)
 
 excepciones_pre_aprobadas: []

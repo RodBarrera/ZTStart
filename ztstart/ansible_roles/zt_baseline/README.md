@@ -40,6 +40,7 @@ ansible-playbook ../playbook.yml --tags cis_5.4.1 --ask-become-pass
 | `cis_1.1.1.1` | `cis_1_1_1_1_filesystems_no_usados.yml` | `servicios_innecesarios` | Bloquea la carga de módulos de filesystem no usados (cramfs, udf, etc.) |
 | `cis_3.1.1` | `cis_3_1_1_ip_forwarding.yml` | `red_reenvio_trafico` | Deshabilita IP forwarding vía sysctl |
 | `cis_3.3` | `cis_3_3_endurecimiento_pila_red.yml` | `endurecimiento_pila_red` | 19 parámetros sysctl: redirecciones ICMP, ruta de origen forzada, reverse path filtering, SYN cookies, router advertisements IPv6, ICMP bogus/broadcast |
+| `cis_paquetes_seguridad` | `cis_paquetes_seguridad.yml` | `gestion_paquetes_seguridad` | Instala `aide`, `apparmor-utils`, `systemd-journal-remote`, `iptables`, `ufw`, `chrony`; remueve `rsync`, `inetutils-telnet`, `rpcbind` |
 | `cis_5.2.1` | `cis_5_2_1_permisos_sshd_config.yml` | `acceso_remoto_ssh` | Restringe permisos de `sshd_config` a 0600, solo root |
 | `cis_5.4.1` | `cis_5_4_1_politica_contrasenas.yml` | `politica_contrasenas` | Ajusta `PASS_MAX_DAYS`/`PASS_MIN_DAYS`/`PASS_MIN_LEN` en `login.defs` |
 
@@ -49,6 +50,19 @@ mapear un hallazgo fallado directamente al tag de Ansible que lo corrige.
 
 ## Limitaciones conocidas
 
+- **`cis_paquetes_seguridad` no construye la base de datos de AIDE.** Solo
+  instala el paquete `aide` (regla `aide_installed`); la regla
+  `aide_build_database` sigue sin cobertura a propósito — inicializar la
+  base de datos (`aideinit`) es una operación larga que además debería
+  correr una sola vez y no en cada `apply`, así que necesita su propio
+  control más adelante en vez de forzarla dentro de esta tarea genérica.
+- **`cis_paquetes_seguridad` instala `iptables` y `ufw` a la vez.** El
+  benchmark CIS evalúa cada paquete de firewall como una regla separada, y
+  esta tarea solo instala software (no activa reglas de firewall ni
+  deshabilita servicios), así que no hay riesgo de bloquear tráfico por
+  accidente — pero vale la pena revisar si instalar dos frontends de
+  firewall a la vez tiene sentido para el caso de uso real, o si conviene
+  dejar que la organización elija uno.
 - **`cis_5.4.1` solo afecta cuentas nuevas.** Los valores en `/etc/login.defs`
   no cambian retroactivamente la política de cuentas ya existentes — eso
   requeriría `chage` por usuario, fuera del alcance de este rol por ahora.

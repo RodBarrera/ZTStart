@@ -424,3 +424,77 @@ Se decide dejar el trabajo aquí por ahora (28-07-2026) — el criterio de
 "parar" fue simplemente una decisión de sesión, no una señal de que el
 proyecto esté completo en este punto.
 
+## ADR-014: Nueva categoría `gestion_paquetes_seguridad` (explainer + zt_baseline)
+
+**Decisión:** se agregó la categoría `gestion_paquetes_seguridad` al
+explainer y su control correspondiente `cis_paquetes_seguridad` en
+`zt_baseline`, cubriendo el segundo grupo más grande de hallazgos sin
+clasificar (ADR-013): 9 reglas que solo verifican estado de instalación de
+un paquete — instala `aide`, `apparmor-utils`, `systemd-journal-remote`,
+`iptables`, `ufw`, `chrony`; remueve `rsync`, `inetutils-telnet`, `rpcbind`.
+
+**Por qué las palabras clave son solo `_installed`/`_removed` (genéricas) en
+vez de listar cada paquete:** estas reglas CIS solo verifican presencia o
+ausencia de un paquete vía dpkg, sin tocar configuración ni activación de
+servicios — así que "instalar" o "quitar" el paquete es una remediación
+completa, sin importar cuál sea el paquete específico. Usar un sufijo
+genérico en vez de nombres de paquete uno por uno evita tener que tocar el
+explainer cada vez que se agregue un paquete nuevo a
+`zt_baseline_paquetes_seguridad_instalar/remover`. Es seguro colocar esta
+categoría al final de `CATEGORIAS` (orden de registro) porque el matching
+es "primer match gana": reglas como `package_pam_pwquality_installed`, que
+también contienen `_installed` pero ya tenían una categoría más específica
+registrada antes (`politica_contrasenas`), siguen clasificando ahí — se
+verificó con un test de regresión explícito.
+
+**Por qué `aide_build_database` queda deliberadamente sin cobertura:**
+aunque semánticamente está relacionada con `aide_installed`, construir la
+base de datos de AIDE (`aideinit`) es una operación distinta — larga, que
+debería correr una sola vez y no en cada `apply`, y que mueve un archivo de
+base de datos en vez de solo instalar un paquete. Incluirla en esta
+categoría habría hecho que el `apply` la reportara como "cubierta" sin que
+exista una tarea de Ansible real que la resuelva — la arquitectura actual
+de `rules_engine` determina cobertura a nivel de categoría, no de regla
+individual (ver limitación anotada más abajo), así que agregar la palabra
+clave `aide` sin la tarea correspondiente habría sido engañoso. Se verificó
+con un test explícito que sigue cayendo en el fallback honesto.
+
+**Bug real encontrado al probar la tarea de verdad (no en tests unitarios):**
+la primera versión de la tarea usaba `update_cache: true` en el módulo
+`ansible.builtin.apt`. Eso hace que Ansible corra un `apt-get update`
+completo sobre **todos** los repositorios configurados en el sistema, no
+solo los necesarios para nuestros paquetes — y en el sandbox de pruebas
+falló porque un repo de terceros (nodesource, ajeno por completo a este
+control) tenía su llave de firma vencida, tumbando todo el control. Esto es
+relevante más allá del sandbox: servidores reales frecuentemente tienen
+repos de terceros configurados (nodesource, Docker, PPAs), y un control de
+seguridad no debería poder fallar por completo debido a un repo que no
+tiene nada que ver con lo que se está instalando. Se corrigió quitando
+`update_cache: true` — la tarea ahora usa la caché de apt existente del
+sistema en vez de forzar una actualización completa.
+
+**Validación real hecha:** `ansible-playbook --syntax-check` sobre el
+playbook completo; `ansible-lint` sin warnings; instalación real de los 6
+paquetes (confirmada con `dpkg -l`) y segunda corrida con `changed=0`;
+prueba de remoción forzando drift real (`apt-get install rsync` a mano,
+luego confirmando que la tarea lo remueve y `dpkg -l` ya no lo lista).
+
+**Efecto en el perfil `pyme-basico`:** pasó de 5 a 6 controles incluidos.
+`test_cargar_perfil_pyme_basico_real` actualizado al conteo real (mismo
+patrón de mantenimiento anotado en el ADR-012 — sigue pendiente decidir si
+ese test debería verificar "al menos N" en vez de un número exacto).
+
+**Limitación arquitectural que este ADR deja explícita (no nueva, pero
+ahora más visible):** la cobertura que reporta `ztstart apply` es a nivel
+de *categoría*, no de *regla individual* — un hallazgo cuenta como
+"cubierto" si su categoría está en `categorias_habilitadas` del perfil, sin
+verificar que exista una tarea de Ansible que remedie esa regla específica.
+Hoy esto es correcto porque cada categoría fue construida 1:1 con su tarea
+de Ansible (con el cuidado explícito de excluir `aide_build_database` de
+las palabras clave, precisamente para no romper esta correspondencia), pero
+es una responsabilidad manual: quien agregue una palabra clave nueva a una
+categoría existente tiene que revisar si la tarea de Ansible de esa
+categoría realmente cubre las reglas nuevas que empiece a capturar, o el
+número de "cubiertos" que ve el usuario podría inflarse sin que haya
+remediación real detrás.
+

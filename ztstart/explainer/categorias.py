@@ -222,6 +222,40 @@ _registrar(
 )
 
 
+_registrar(
+    PlantillaCategoria(
+        id="gestion_paquetes_seguridad",
+        nombre_legible="Paquetes de seguridad faltantes o innecesarios",
+        # Deliberadamente solo "_installed" / "_removed": estas reglas de CIS
+        # únicamente verifican el estado de instalación de un paquete (no
+        # configuración ni activación), así que "instalar" o "quitar" el
+        # paquete correspondiente es una remediación completa y segura — no
+        # cambia reglas de firewall, no reinicia servicios de red críticos.
+        palabras_clave=("_installed", "_removed"),
+        mensaje_simple=(
+            "Este control se refiere a un paquete relacionado con la "
+            "seguridad del sistema: o falta instalar una herramienta "
+            "recomendada, o hay un paquete instalado que debería quitarse "
+            "por ser innecesario o inseguro."
+        ),
+        por_que_importa=(
+            "Las herramientas de seguridad recomendadas (integridad de "
+            "archivos, sincronización de hora confiable, firewall) no "
+            "protegen si no están instaladas. Del otro lado, paquetes de "
+            "servicios legados o innecesarios (como telnet o rpcbind) "
+            "amplían la superficie de ataque aunque nadie los use "
+            "activamente."
+        ),
+        que_pasa_si_se_ignora=(
+            "Si falta una herramienta de seguridad, el sistema pierde esa "
+            "capa de protección o detección. Si sobra un paquete inseguro, "
+            "queda ahí como una puerta adicional que un atacante podría "
+            "aprovechar si algún día se activa por error o se abusa de él."
+        ),
+    )
+)
+
+
 def categorias_disponibles() -> tuple[str, ...]:
     """IDs de todas las categorías registradas — útil para tests y documentación."""
     return tuple(CATEGORIAS.keys())
